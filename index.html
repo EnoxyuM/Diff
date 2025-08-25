@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Text Diff Tool</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/bespin.min.css">
+
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: #0a0a0a;
+        color: #00c6e0;
+        font-family: monospace;
+        overflow: hidden;
+    }
+    .container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .buttons {
+        padding: 10px;
+        background-color: #1a1a1a;
+        border-bottom: 1px solid #00c6e0;
+        flex-shrink: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .buttons button {
+        background-color: #0a0a0a;
+        color: #00c6e0;
+        border: 1px solid #00c6e0;
+        padding: 8px 12px;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+    .buttons button:hover {
+        background-color: #00c6e0;
+        color: #0a0a0a;
+    }
+    #diff-stats {
+        padding-right: 10px;
+        font-size: 14px;
+    }
+    .editors {
+        display: flex;
+        flex-grow: 1;
+        overflow: hidden;
+    }
+
+    .editor-wrapper {
+        flex: 1;
+        height: 100%;
+    }
+    .CodeMirror {
+        height: 100%;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    .cm-s-bespin.CodeMirror {
+        background-color: #0a0a0a;
+        color: #00c6e0;
+    }
+    .cm-s-bespin .CodeMirror-gutters {
+        background: #121212;
+        border-right: 1px solid #333;
+    }
+    .cm-s-bespin .CodeMirror-linenumber { color: #666; }
+
+    .line-added { background-color: rgba(40, 167, 69, 0.2); }
+    .line-removed { background-color: rgba(220, 53, 69, 0.2); }
+    .line-placeholder {
+        background-color: #1a1a1a;
+    }
+
+    #diff-scrollbar {
+        width: 5px;
+        height: 100%;
+        background-color: #2a2a2a;
+        position: relative;
+        overflow: hidden;
+    }
+    .diff-marker {
+        position: absolute;
+        width: 100%;
+        height: 3px;
+        left: 0;
+    }
+    .marker-added { background-color: #28a745; }
+    .marker-removed { background-color: #dc3545; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="buttons">
+        <div>
+            <button id="paste-left">Paste L</button>
+            <button id="paste-right">Paste R</button>
+            <button id="find-diff">Find Diff</button>
+            <button id="diff">Paste Diff</button>
+            <button id="copy">Copy R</button>
+            <button id="copy-l2r-diff">Copy L2R Diff</button>
+        </div>
+        <span id="diff-stats"></span>
+    </div>
+    <div class="editors">
+        <div id="left-editor-container" class="editor-wrapper"></div>
+        <div id="diff-scrollbar"></div>
+        <div id="right-editor-container" class="editor-wrapper"></div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+<script>
+    const leftEditor = CodeMirror(document.getElementById('left-editor-container'), {
+        theme: 'bespin',
+        lineNumbers: true,
+        lineWrapping: true,
+    });
+
+    const rightEditor = CodeMirror(document.getElementById('right-editor-container'), {
+        theme: 'bespin',
+        lineNumbers: true,
+        lineWrapping: true,
+    });
+
+    const diffScrollbar = document.getElementById('diff-scrollbar');
+    const diffStats = document.getElementById('diff-stats');
+    let preDiffLeftText = null;
+    let preDiffRightText = null;
+    let isApplyingDiff = false;
+    let leftViewToOrigLineMap = [];
+    let rightViewToOrigLineMap = [];
+
+    let isSyncing = false;
+    leftEditor.on("scroll", (cm) => { if (!isSyncing) { isSyncing = true; rightEditor.scrollTo(cm.getScrollInfo().left, cm.getScrollInfo().top); isSyncing = false; } });
+    rightEditor.on("scroll", (cm) => { if (!isSyncing) { isSyncing = true; leftEditor.scrollTo(cm.getScrollInfo().left, cm.getScrollInfo().top); isSyncing = false; } });
+
+    function beforeChangeHandler(cm, change) {
+        if (isApplyingDiff || preDiffLeftText === null || change.origin === 'setValue') {
+            return;
+        }
+
+        change.cancel();
+        isApplyingDiff = true;
+
+        const targetEditor = (cm === leftEditor) ? leftEditor : rightEditor;
+        const map = (cm === leftEditor) ? leftViewToOrigLineMap : rightViewToOrigLineMap;
+
+        function mapLine(viewLine) {
+            let origLine = map[viewLine];
+            if (origLine !== null && origLine !== undefined) return origLine;
+            for (let i = viewLine - 1; i >= 0; i--) {
+                if (map[i] !== null && map[i] !== undefined) return map[i] + 1;
+            }
+            return 0;
+        }
+
+        const origFromLine = mapLine(change.from.line);
+        const origToLine = mapLine(change.to.line);
+        const origFrom = { line: origFromLine, ch: change.from.ch };
+        const origTo = { line: origToLine, ch: change.to.ch };
+
+        const newCursorLine = origFrom.line + change.text.length - 1;
+        const lastLineText = change.text[change.text.length - 1];
+        const newCursorCh = (change.text.length === 1) ? origFrom.ch + lastLineText.length : lastLineText.length;
+        const newCursorPos = { line: newCursorLine, ch: newCursorCh };
+
+        leftEditor.setValue(preDiffLeftText);
+        rightEditor.setValue(preDiffRightText);
+        preDiffLeftText = null;
+        preDiffRightText = null;
+        diffScrollbar.innerHTML = '';
+        diffStats.textContent = '';
+        
+        targetEditor.replaceRange(change.text, origFrom, origTo);
+        targetEditor.setCursor(newCursorPos);
+        targetEditor.focus();
+        
+        isApplyingDiff = false;
+    }
+
+    leftEditor.on("beforeChange", beforeChangeHandler);
+    rightEditor.on("beforeChange", beforeChangeHandler);
+
+    document.getElementById('paste-left').addEventListener('click', () => navigator.clipboard.readText().then(text => leftEditor.setValue(text)).catch(err => console.error(err)));
+    document.getElementById('paste-right').addEventListener('click', () => navigator.clipboard.readText().then(text => rightEditor.setValue(text)).catch(err => console.error(err)));
+    
+    document.getElementById('find-diff').addEventListener('click', () => {
+        if (preDiffLeftText !== null) {
+            leftEditor.setValue(preDiffLeftText);
+            rightEditor.setValue(preDiffRightText);
+        }
+        const leftText = leftEditor.getValue();
+        const rightText = rightEditor.getValue();
+        
+        preDiffLeftText = leftText;
+        preDiffRightText = rightText;
+
+        const changes = Diff.diffLines(leftText, rightText);
+        updateDiffStats(changes);
+        renderDiffView(changes);
+    });
+
+    document.getElementById('diff').addEventListener('click', () => {
+        navigator.clipboard.readText()
+            .then(patch_text => {
+                if (preDiffLeftText !== null) leftEditor.setValue(preDiffLeftText);
+                
+                const original_text = leftEditor.getValue();
+                const patched = Diff.applyPatch(original_text, patch_text);
+
+                if (patched === false) {
+                    preDiffLeftText = null; preDiffRightText = null;
+                    rightEditor.setValue("Error: Patch could not be applied.");
+                    leftEditor.setValue(original_text);
+                    return;
+                }
+                
+                preDiffLeftText = original_text;
+                preDiffRightText = patched;
+                
+                const changes = Diff.diffLines(original_text, patched);
+                updateDiffStats(changes);
+                renderDiffView(changes);
+            })
+            .catch(err => {
+                rightEditor.setValue(`Error applying patch:\n${err.message}`);
+                console.error(err);
+            });
+    });
+
+    document.getElementById('copy').addEventListener('click', () => navigator.clipboard.writeText(preDiffRightText || rightEditor.getValue()).catch(err => console.error(err)));
+
+    document.getElementById('copy-l2r-diff').addEventListener('click', () => {
+        const leftText = preDiffLeftText || leftEditor.getValue();
+        const rightText = preDiffRightText || rightEditor.getValue();
+        const correctPatch = Diff.createPatch('file.txt', leftText, rightText, 'a/left.txt', 'b/right.txt');
+
+        navigator.clipboard.writeText(correctPatch)
+            .then(() => {
+                const button = document.getElementById('copy-l2r-diff');
+                const originalButtonText = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(() => { button.textContent = originalButtonText; }, 1500);
+            })
+            .catch(err => console.error(err));
+    });
+    
+    function updateDiffStats(changes) {
+        let addedCount = 0;
+        let removedCount = 0;
+        changes.forEach(part => {
+            if (part.added) {
+                addedCount += part.count;
+            } else if (part.removed) {
+                removedCount += part.count;
+            }
+        });
+        diffStats.textContent = `+ ${addedCount} | - ${removedCount}`;
+    }
+    
+    function renderDiffView(changes) {
+        diffScrollbar.innerHTML = '';
+        leftViewToOrigLineMap = [];
+        rightViewToOrigLineMap = [];
+        let origLeftLineCounter = 0;
+        let origRightLineCounter = 0;
+        let viewLineCounter = 0;
+
+        const leftLines = [];
+        const rightLines = [];
+        const highlights = [];
+
+        changes.forEach(part => {
+            let lines = part.value.replace(/\n$/, "").split("\n");
+            
+            if (part.added) {
+                createMarker('marker-added', viewLineCounter);
+                for (const line of lines) {
+                    leftLines.push('');
+                    rightLines.push(line);
+                    leftViewToOrigLineMap[viewLineCounter] = null;
+                    rightViewToOrigLineMap[viewLineCounter] = origRightLineCounter++;
+                    highlights.push({ type: 'added', line: viewLineCounter });
+                    viewLineCounter++;
+                }
+            } else if (part.removed) {
+                createMarker('marker-removed', viewLineCounter);
+                for (const line of lines) {
+                    leftLines.push(line);
+                    rightLines.push('');
+                    leftViewToOrigLineMap[viewLineCounter] = origLeftLineCounter++;
+                    rightViewToOrigLineMap[viewLineCounter] = null;
+                    highlights.push({ type: 'removed', line: viewLineCounter });
+                    viewLineCounter++;
+                }
+            } else {
+                for (const line of lines) {
+                    leftLines.push(line);
+                    rightLines.push(line);
+                    leftViewToOrigLineMap[viewLineCounter] = origLeftLineCounter++;
+                    rightViewToOrigLineMap[viewLineCounter] = origRightLineCounter++;
+                    viewLineCounter++;
+                }
+            }
+        });
+
+        isApplyingDiff = true;
+        leftEditor.setValue(leftLines.join('\n'));
+        rightEditor.setValue(rightLines.join('\n'));
+        isApplyingDiff = false;
+        
+        const totalLines = leftLines.length;
+        highlights.forEach(h => {
+            if (h.type === 'added') {
+                rightEditor.addLineClass(h.line, 'background', 'line-added');
+                leftEditor.addLineClass(h.line, 'background', 'line-placeholder');
+            } else if (h.type === 'removed') {
+                rightEditor.addLineClass(h.line, 'background', 'line-removed');
+                rightEditor.addLineClass(h.line, 'background', 'line-placeholder');
+            }
+        });
+
+        const markers = diffScrollbar.querySelectorAll('.diff-marker');
+        markers.forEach(marker => {
+            const lineNumber = parseInt(marker.dataset.line, 10);
+            if (totalLines > 0) marker.style.top = `${(lineNumber / totalLines) * 100}%`;
+        });
+    }
+
+    function createMarker(type, lineNumber) {
+        const marker = document.createElement('div');
+        marker.className = `diff-marker ${type}`;
+        marker.dataset.line = lineNumber;
+        marker.style.top = '0%';
+        diffScrollbar.appendChild(marker);
+    }
+</script>
+
+</body>
+</html>
