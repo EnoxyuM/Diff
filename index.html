@@ -70,8 +70,9 @@
     }
     .cm-s-bespin .CodeMirror-linenumber { color: #666; }
 
-    .line-added { background-color: rgba(40, 167, 69, 0.2); }
-    .line-removed { background-color: rgba(220, 53, 69, 0.2); }
+    .line-added { background-color: rgba(40, 167, 69, 0.25); }
+    .line-removed { background-color: rgba(220, 53, 69, 0.35); }
+    
     .line-placeholder {
         background-color: #1a1a1a;
     }
@@ -322,7 +323,7 @@
                 rightEditor.addLineClass(h.line, 'background', 'line-added');
                 leftEditor.addLineClass(h.line, 'background', 'line-placeholder');
             } else if (h.type === 'removed') {
-                rightEditor.addLineClass(h.line, 'background', 'line-removed');
+                leftEditor.addLineClass(h.line, 'background', 'line-removed');
                 rightEditor.addLineClass(h.line, 'background', 'line-placeholder');
             }
         });
