@@ -57,12 +57,20 @@
     .editor-wrapper {
         flex: 1;
         height: 100%;
+        min-width: 0;
     }
     .CodeMirror {
         height: 100%;
         font-size: 14px;
         line-height: 1.5;
     }
+    
+    .CodeMirror-wrap .CodeMirror-line {
+        white-space: pre-wrap !important;
+        word-break: break-all;
+        overflow-wrap: break-word;
+    }
+    
     .cm-s-bespin.CodeMirror {
         background-color: #0a0a0a;
         color: #00c6e0;
@@ -262,28 +270,38 @@
         let inMultilineComment = false;
         let inSingleLineComment = false;
         let inRegex = false;
-        let quoteChar = null;
-        let lastMeaningfulChar = '';
+        let inCharClass = false;
+        let quoteChar = null; 
 
         for (let i = 0; i < code.length; i++) {
             const char = code[i];
+            const prevChar = i > 0 ? code[i - 1] : null;
+            const nextChar = i < code.length - 1 ? code[i + 1] : null;
 
+            // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
+            // Если мы видим ```, мы рассматриваем это как единый токен,
+            // который не должен менять состояние парсера (т.е. не является строкой).
+            // Это предотвращает ложное срабатывание 'in string'.
+            if (char === '`' && nextChar === '`' && code[i + 2] === '`') {
+                result += '```';
+                i += 2; // Пропускаем 2 следующих символа, т.к. мы их обработали
+                continue;
+            }
 
-            if ((quoteChar || inRegex) && char === '\\') {
-                result += char + (code[i + 1] || '');
-                if (/\S/.test(char)) lastMeaningfulChar = code[i + 1] || '';
+            if ((quoteChar || inRegex) && char === '\\' && prevChar !== '\\') {
+                result += char + (nextChar || '');
                 i++;
                 continue;
             }
-
-
+            
             if (inMultilineComment) {
-                if (char === '*' && code[i + 1] === '/') {
+                if (char === '*' && nextChar === '/') {
                     inMultilineComment = false;
-                    i++;
+                    i++; 
                 }
                 continue;
             }
+
             if (inSingleLineComment) {
                 if (char === '\n') {
                     inSingleLineComment = false;
@@ -291,71 +309,73 @@
                 }
                 continue;
             }
+
             if (quoteChar) {
                 result += char;
                 if (char === quoteChar) {
                     quoteChar = null;
                 }
-                if (/\S/.test(char)) lastMeaningfulChar = char;
                 continue;
             }
+
             if (inRegex) {
                 result += char;
-                if (char === '/') {
-                    inRegex = false;
+                if (inCharClass) {
+                    if (char === ']') {
+                        inCharClass = false;
+                    }
+                } else {
+                    if (char === '[') {
+                        inCharClass = true;
+                    } else if (char === '/') {
+                        inRegex = false;
+                    }
                 }
-                if (/\S/.test(char)) lastMeaningfulChar = char;
                 continue;
             }
 
-
-            if (char === '/' && code[i + 1] === '*') {
+            if (char === '/' && nextChar === '*') {
                 inMultilineComment = true;
                 i++;
                 continue;
             }
-            if (char === '/' && code[i + 1] === '/') {
+            if (char === '/' && nextChar === '/') {
                 inSingleLineComment = true;
                 i++;
                 continue;
             }
+
             if (char === "'" || char === '"' || char === '`') {
                 quoteChar = char;
                 result += char;
-                if (/\S/.test(char)) lastMeaningfulChar = char;
                 continue;
             }
 
             if (char === '/') {
-
-
+                let j = result.length - 1;
+                while (j >= 0 && /\s/.test(result[j])) {
+                    j--;
+                }
+                const lastMeaningfulChar = j >= 0 ? result[j] : '';
+                
                 if ('([,=:[!&|?{};'.includes(lastMeaningfulChar) || lastMeaningfulChar === '') {
                     inRegex = true;
+                    result += char;
+                    continue;
                 }
             }
 
             result += char;
-            if (/\S/.test(char)) {
-                lastMeaningfulChar = char;
-            }
         }
-
-
+        
         return result.replace(/[ \t]+$/gm, '');
     }
 
 
     document.getElementById('del-com').addEventListener('click', () => {
-
         const originalLeftText = leftEditor.getValue();
-
-
         rightEditor.setValue(originalLeftText);
-
-
         const cleanedLeftText = removeComments(originalLeftText);
-
-
         leftEditor.setValue(cleanedLeftText);
     });
 
