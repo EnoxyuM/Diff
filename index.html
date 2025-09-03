@@ -75,7 +75,7 @@
 
     .line-added { background-color: rgba(40, 167, 69, 0.25); }
     .line-removed { background-color: rgba(220, 53, 69, 0.35); }
-    
+
     .line-placeholder {
         background-color: #1a1a1a;
     }
@@ -108,6 +108,7 @@
             <button id="diff">Paste Diff</button>
             <button id="copy">Copy R</button>
             <button id="copy-l2r-diff">Copy L2R Diff</button>
+            <button id="del-com">DelCom</button>
         </div>
         <span id="diff-stats"></span>
     </div>
@@ -181,11 +182,11 @@
         preDiffRightText = null;
         diffScrollbar.innerHTML = '';
         diffStats.textContent = '';
-        
+
         targetEditor.replaceRange(change.text, origFrom, origTo);
         targetEditor.setCursor(newCursorPos);
         targetEditor.focus();
-        
+
         isApplyingDiff = false;
     }
 
@@ -194,7 +195,7 @@
 
     document.getElementById('paste-left').addEventListener('click', () => navigator.clipboard.readText().then(text => leftEditor.setValue(text)).catch(err => console.error(err)));
     document.getElementById('paste-right').addEventListener('click', () => navigator.clipboard.readText().then(text => rightEditor.setValue(text)).catch(err => console.error(err)));
-    
+
     document.getElementById('find-diff').addEventListener('click', () => {
         if (preDiffLeftText !== null) {
             leftEditor.setValue(preDiffLeftText);
@@ -202,7 +203,7 @@
         }
         const leftText = leftEditor.getValue();
         const rightText = rightEditor.getValue();
-        
+
         preDiffLeftText = leftText;
         preDiffRightText = rightText;
 
@@ -215,7 +216,7 @@
         navigator.clipboard.readText()
             .then(patch_text => {
                 if (preDiffLeftText !== null) leftEditor.setValue(preDiffLeftText);
-                
+
                 const original_text = leftEditor.getValue();
                 const patched = Diff.applyPatch(original_text, patch_text);
 
@@ -225,10 +226,10 @@
                     leftEditor.setValue(original_text);
                     return;
                 }
-                
+
                 preDiffLeftText = original_text;
                 preDiffRightText = patched;
-                
+
                 const changes = Diff.diffLines(original_text, patched);
                 updateDiffStats(changes);
                 renderDiffView(changes);
@@ -255,7 +256,102 @@
             })
             .catch(err => console.error(err));
     });
-    
+
+    function removeComments(code) {
+        let result = '';
+        let inMultilineComment = false;
+        let inSingleLineComment = false;
+        let inRegex = false;
+        let quoteChar = null;
+        let lastMeaningfulChar = '';
+
+        for (let i = 0; i < code.length; i++) {
+            const char = code[i];
+
+
+            if ((quoteChar || inRegex) && char === '\\') {
+                result += char + (code[i + 1] || '');
+                if (/\S/.test(char)) lastMeaningfulChar = code[i + 1] || '';
+                i++;
+                continue;
+            }
+
+
+            if (inMultilineComment) {
+                if (char === '*' && code[i + 1] === '/') {
+                    inMultilineComment = false;
+                    i++;
+                }
+                continue;
+            }
+            if (inSingleLineComment) {
+                if (char === '\n') {
+                    inSingleLineComment = false;
+                    result += char;
+                }
+                continue;
+            }
+            if (quoteChar) {
+                result += char;
+                if (char === quoteChar) {
+                    quoteChar = null;
+                }
+                if (/\S/.test(char)) lastMeaningfulChar = char;
+                continue;
+            }
+            if (inRegex) {
+                result += char;
+                if (char === '/') {
+                    inRegex = false;
+                }
+                if (/\S/.test(char)) lastMeaningfulChar = char;
+                continue;
+            }
+
+
+            if (char === '/' && code[i + 1] === '*') {
+                inMultilineComment = true;
+                i++;
+                continue;
+            }
+            if (char === '/' && code[i + 1] === '/') {
+                inSingleLineComment = true;
+                i++;
+                continue;
+            }
+            if (char === "'" || char === '"' || char === '`') {
+                quoteChar = char;
+                result += char;
+                if (/\S/.test(char)) lastMeaningfulChar = char;
+                continue;
+            }
+
+            if (char === '/') {
+
+
+                if ('([,=:[!&|?{};'.includes(lastMeaningfulChar) || lastMeaningfulChar === '') {
+                    inRegex = true;
+                }
+            }
+
+            result += char;
+            if (/\S/.test(char)) {
+                lastMeaningfulChar = char;
+            }
+        }
+
+
+        return result.replace(/[ \t]+$/gm, '');
+    }
+
+    document.getElementById('del-com').addEventListener('click', () => {
+        const cleanedLeft = removeComments(leftEditor.getValue());
+        leftEditor.setValue(cleanedLeft);
+
+        const cleanedRight = removeComments(rightEditor.getValue());
+        rightEditor.setValue(cleanedRight);
+    });
+
     function updateDiffStats(changes) {
         let addedCount = 0;
         let removedCount = 0;
@@ -268,7 +364,7 @@
         });
         diffStats.textContent = `+ ${addedCount} | - ${removedCount}`;
     }
-    
+
     function renderDiffView(changes) {
         diffScrollbar.innerHTML = '';
         leftViewToOrigLineMap = [];
@@ -283,7 +379,7 @@
 
         changes.forEach(part => {
             let lines = part.value.replace(/\n$/, "").split("\n");
-            
+
             if (part.added) {
                 createMarker('marker-added', viewLineCounter);
                 for (const line of lines) {
@@ -319,7 +415,7 @@
         leftEditor.setValue(leftLines.join('\n'));
         rightEditor.setValue(rightLines.join('\n'));
         isApplyingDiff = false;
-        
+
         const totalLines = leftLines.length;
         highlights.forEach(h => {
             if (h.type === 'added') {
