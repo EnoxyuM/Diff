@@ -344,13 +344,21 @@
         return result.replace(/[ \t]+$/gm, '');
     }
 
-    document.getElementById('del-com').addEventListener('click', () => {
-        const cleanedLeft = removeComments(leftEditor.getValue());
-        leftEditor.setValue(cleanedLeft);
 
-        const cleanedRight = removeComments(rightEditor.getValue());
-        rightEditor.setValue(cleanedRight);
+    document.getElementById('del-com').addEventListener('click', () => {
+
+        const originalLeftText = leftEditor.getValue();
+
+
+        rightEditor.setValue(originalLeftText);
+
+
+        const cleanedLeftText = removeComments(originalLeftText);
+
+
+        leftEditor.setValue(cleanedLeftText);
     });
+
 
     function updateDiffStats(changes) {
         let addedCount = 0;
