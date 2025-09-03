@@ -18,4 +18,5 @@
 This button copy left to right window and deletes comments in left window ignoring  inside text("// /**/" and inside ```) and in regex.
 It also replaces strings that contains only spacebars with empty strings.
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/8f054783-1b06-45de-b6aa-8e4f8ed09e40" />
+<img width="1920" height="1078" alt="image" src="https://github.com/user-attachments/assets/ba1b437b-20b8-41a4-abb8-90cbc1268ca3" />
+
