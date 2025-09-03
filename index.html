@@ -29,8 +29,11 @@
         border-bottom: 1px solid #00c6e0;
         flex-shrink: 0;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+
+        justify-content: space-between;
+        position: relative;
+
     }
     .buttons button {
         background-color: #0a0a0a;
@@ -44,16 +47,34 @@
         background-color: #00c6e0;
         color: #0a0a0a;
     }
-    #diff-stats {
-        padding-right: 10px;
-        font-size: 14px;
+
+
+    #diff-nav-buttons {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
     }
+
+
+    #diff-nav-buttons button {
+        padding: 5px 10px;
+        font-size: 16px;
+        line-height: 1;
+        margin: 0 5px;
+    }
+
+    #diff-stats {
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
     .editors {
         display: flex;
         flex-grow: 1;
         overflow: hidden;
     }
-
     .editor-wrapper {
         flex: 1;
         height: 100%;
@@ -64,13 +85,11 @@
         font-size: 14px;
         line-height: 1.5;
     }
-    
     .CodeMirror-wrap .CodeMirror-line {
         white-space: pre-wrap !important;
         word-break: break-all;
         overflow-wrap: break-word;
     }
-    
     .cm-s-bespin.CodeMirror {
         background-color: #0a0a0a;
         color: #00c6e0;
@@ -81,11 +100,25 @@
     }
     .cm-s-bespin .CodeMirror-linenumber { color: #666; }
 
-    .line-added { background-color: rgba(40, 167, 69, 0.25); }
-    .line-removed { background-color: rgba(220, 53, 69, 0.35); }
+    .line-ws-removed { background-color: rgba(255, 193, 7, 0.25); }
+    .line-ws-added { background-color: rgba(0, 123, 255, 0.2); }
 
-    .line-placeholder {
-        background-color: #1a1a1a;
+    .line-added { background-color: rgba(40, 167, 69, 0.2); }
+    .line-removed { background-color: rgba(220, 53, 69, 0.25); }
+    .line-placeholder { background-color: #1a1a1a; }
+
+    .char-added {
+        background-color: rgba(40, 167, 69, 0.5);
+        border-radius: 2px;
+    }
+    .char-removed {
+        background-color: rgba(220, 53, 69, 0.5);
+        text-decoration: line-through;
+        border-radius: 2px;
+    }
+    .char-removed-ws {
+        background-color: rgba(220, 53, 69, 0.5);
+        border-radius: 2px;
     }
 
     #diff-scrollbar {
@@ -108,8 +141,9 @@
 <body>
 
 <div class="container">
+    <!-- === ИЗМЕНЕНИЕ: Упрощенная структура HTML === -->
     <div class="buttons">
-        <div>
+        <div class="buttons-left">
             <button id="paste-left">Paste L</button>
             <button id="paste-right">Paste R</button>
             <button id="copy">Copy R</button>
@@ -118,8 +152,17 @@
             <button id="find-diff">Find Diff</button>
             <button id="del-com">DelCom</button>
         </div>
-        <span id="diff-stats"></span>
+
+        <div id="diff-nav-buttons">
+            <button id="prev-diff" title="Previous Difference">↑</button>
+            <button id="next-diff" title="Next Difference">↓</button>
+        </div>
+
+        <div class="buttons-right">
+            <span id="diff-stats"></span>
+        </div>
     </div>
+    <!-- === КОНЕЦ ИЗМЕНЕНИЯ === -->
     <div class="editors">
         <div id="left-editor-container" class="editor-wrapper"></div>
         <div id="diff-scrollbar"></div>
@@ -144,15 +187,35 @@
 
     const diffScrollbar = document.getElementById('diff-scrollbar');
     const diffStats = document.getElementById('diff-stats');
+
+    const diffNavButtons = document.getElementById('diff-nav-buttons');
+    const prevDiffButton = document.getElementById('prev-diff');
+    const nextDiffButton = document.getElementById('next-diff');
+
     let preDiffLeftText = null;
     let preDiffRightText = null;
     let isApplyingDiff = false;
     let leftViewToOrigLineMap = [];
     let rightViewToOrigLineMap = [];
 
+    let diffLinesArray = [];
+    let currentDiffIndex = -1;
+
     let isSyncing = false;
     leftEditor.on("scroll", (cm) => { if (!isSyncing) { isSyncing = true; rightEditor.scrollTo(cm.getScrollInfo().left, cm.getScrollInfo().top); isSyncing = false; } });
     rightEditor.on("scroll", (cm) => { if (!isSyncing) { isSyncing = true; leftEditor.scrollTo(cm.getScrollInfo().left, cm.getScrollInfo().top); isSyncing = false; } });
+
+    function clearAllDiffHighlighting(editor) {
+        editor.getAllMarks().forEach(marker => marker.clear());
+
+        for (let i = 0; i < editor.lineCount(); i++) {
+            editor.removeLineClass(i, 'background', 'line-added');
+            editor.removeLineClass(i, 'background', 'line-removed');
+            editor.removeLineClass(i, 'background', 'line-placeholder');
+            editor.removeLineClass(i, 'background', 'line-ws-added');
+            editor.removeLineClass(i, 'background', 'line-ws-removed');
+        }
+    }
 
     function beforeChangeHandler(cm, change) {
         if (isApplyingDiff || preDiffLeftText === null || change.origin === 'setValue') {
@@ -186,10 +249,18 @@
 
         leftEditor.setValue(preDiffLeftText);
         rightEditor.setValue(preDiffRightText);
+
+        clearAllDiffHighlighting(leftEditor);
+        clearAllDiffHighlighting(rightEditor);
+
         preDiffLeftText = null;
         preDiffRightText = null;
         diffScrollbar.innerHTML = '';
         diffStats.textContent = '';
+
+        diffNavButtons.style.display = 'none';
+        diffLinesArray = [];
+        currentDiffIndex = -1;
 
         targetEditor.replaceRange(change.text, origFrom, origTo);
         targetEditor.setCursor(newCursorPos);
@@ -271,20 +342,16 @@
         let inSingleLineComment = false;
         let inRegex = false;
         let inCharClass = false;
-        let quoteChar = null; 
+        let quoteChar = null;
 
         for (let i = 0; i < code.length; i++) {
             const char = code[i];
             const prevChar = i > 0 ? code[i - 1] : null;
             const nextChar = i < code.length - 1 ? code[i + 1] : null;
 
-            // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
-            // Если мы видим ```, мы рассматриваем это как единый токен,
-            // который не должен менять состояние парсера (т.е. не является строкой).
-            // Это предотвращает ложное срабатывание 'in string'.
             if (char === '`' && nextChar === '`' && code[i + 2] === '`') {
                 result += '```';
-                i += 2; // Пропускаем 2 следующих символа, т.к. мы их обработали
+                i += 2;
                 continue;
             }
 
@@ -293,11 +360,11 @@
                 i++;
                 continue;
             }
-            
+
             if (inMultilineComment) {
                 if (char === '*' && nextChar === '/') {
                     inMultilineComment = false;
-                    i++; 
+                    i++;
                 }
                 continue;
             }
@@ -357,20 +424,17 @@
                     j--;
                 }
                 const lastMeaningfulChar = j >= 0 ? result[j] : '';
-                
+
                 if ('([,=:[!&|?{};'.includes(lastMeaningfulChar) || lastMeaningfulChar === '') {
                     inRegex = true;
                     result += char;
                     continue;
                 }
             }
-
             result += char;
         }
-        
         return result.replace(/[ \t]+$/gm, '');
     }
-
 
     document.getElementById('del-com').addEventListener('click', () => {
         const originalLeftText = leftEditor.getValue();
@@ -378,7 +442,6 @@
         const cleanedLeftText = removeComments(originalLeftText);
         leftEditor.setValue(cleanedLeftText);
     });
-
 
     function updateDiffStats(changes) {
         let addedCount = 0;
@@ -394,41 +457,115 @@
     }
 
     function renderDiffView(changes) {
+        clearAllDiffHighlighting(leftEditor);
+        clearAllDiffHighlighting(rightEditor);
+
         diffScrollbar.innerHTML = '';
         leftViewToOrigLineMap = [];
         rightViewToOrigLineMap = [];
+
+        diffLinesArray = [];
+        currentDiffIndex = -1;
+
         let origLeftLineCounter = 0;
         let origRightLineCounter = 0;
         let viewLineCounter = 0;
 
         const leftLines = [];
         const rightLines = [];
-        const highlights = [];
+        const lineClasses = [];
+        const charMarks = [];
 
-        changes.forEach(part => {
-            let lines = part.value.replace(/\n$/, "").split("\n");
+        for (let i = 0; i < changes.length; i++) {
+            const part = changes[i];
+            const nextPart = (i + 1 < changes.length) ? changes[i + 1] : null;
 
-            if (part.added) {
+            if (part.added || part.removed) {
+                diffLinesArray.push(viewLineCounter);
+            }
+
+            if (part.removed && nextPart && nextPart.added) {
+                const removedLines = part.value.replace(/\n$/, "").split("\n");
+                const addedLines = nextPart.value.replace(/\n$/, "").split("\n");
+                const maxLen = Math.max(removedLines.length, addedLines.length);
+
+                for (let j = 0; j < maxLen; j++) {
+                    const leftLine = removedLines[j] || '';
+                    const rightLine = addedLines[j] || '';
+                    leftLines.push(leftLine);
+                    rightLines.push(rightLine);
+
+                    const isWhitespaceOnlyChange = leftLine.replace(/\s+/g, '') === rightLine.replace(/\s+/g, '');
+
+                    if (isWhitespaceOnlyChange) {
+                        lineClasses.push({ editor: 'left', line: viewLineCounter, class: 'line-ws-removed' });
+                        lineClasses.push({ editor: 'right', line: viewLineCounter, class: 'line-ws-added' });
+                    } else {
+                        lineClasses.push({ editor: 'left', line: viewLineCounter, class: 'line-removed' });
+                        lineClasses.push({ editor: 'right', line: viewLineCounter, class: 'line-added' });
+                    }
+                    createMarker('marker-removed', viewLineCounter);
+
+                    const charDiff = Diff.diffChars(leftLine, rightLine);
+                    let leftCh = 0;
+                    let rightCh = 0;
+
+                    charDiff.forEach(charPart => {
+                        if (charPart.added) {
+                            charMarks.push({
+                                editor: 'right', line: viewLineCounter,
+                                from: rightCh, to: rightCh + charPart.value.length,
+                                className: 'char-added'
+                            });
+                            rightCh += charPart.value.length;
+                        } else if (charPart.removed) {
+                            const className = (charPart.value.trim() === '') ? 'char-removed-ws' : 'char-removed';
+                            charMarks.push({
+                                editor: 'left', line: viewLineCounter,
+                                from: leftCh, to: leftCh + charPart.value.length,
+                                className: className
+                            });
+                            leftCh += charPart.value.length;
+                        } else {
+                            leftCh += charPart.value.length;
+                            rightCh += charPart.value.length;
+                        }
+                    });
+
+                    if (j < removedLines.length) leftViewToOrigLineMap[viewLineCounter] = origLeftLineCounter++;
+                    else leftViewToOrigLineMap[viewLineCounter] = null;
+                    if (j < addedLines.length) rightViewToOrigLineMap[viewLineCounter] = origRightLineCounter++;
+                    else rightViewToOrigLineMap[viewLineCounter] = null;
+
+                    viewLineCounter++;
+                }
+                i++;
+            } else if (part.added) {
                 createMarker('marker-added', viewLineCounter);
+                let lines = part.value.replace(/\n$/, "").split("\n");
                 for (const line of lines) {
                     leftLines.push('');
                     rightLines.push(line);
+                    lineClasses.push({ editor: 'right', line: viewLineCounter, class: 'line-added' });
+                    lineClasses.push({ editor: 'left', line: viewLineCounter, class: 'line-placeholder' });
                     leftViewToOrigLineMap[viewLineCounter] = null;
                     rightViewToOrigLineMap[viewLineCounter] = origRightLineCounter++;
-                    highlights.push({ type: 'added', line: viewLineCounter });
                     viewLineCounter++;
                 }
             } else if (part.removed) {
                 createMarker('marker-removed', viewLineCounter);
+                let lines = part.value.replace(/\n$/, "").split("\n");
                 for (const line of lines) {
                     leftLines.push(line);
                     rightLines.push('');
+                    lineClasses.push({ editor: 'left', line: viewLineCounter, class: 'line-removed' });
+                    lineClasses.push({ editor: 'right', line: viewLineCounter, class: 'line-placeholder' });
                     leftViewToOrigLineMap[viewLineCounter] = origLeftLineCounter++;
                     rightViewToOrigLineMap[viewLineCounter] = null;
-                    highlights.push({ type: 'removed', line: viewLineCounter });
                     viewLineCounter++;
                 }
             } else {
+                let lines = part.value.replace(/\n$/, "").split("\n");
                 for (const line of lines) {
                     leftLines.push(line);
                     rightLines.push(line);
@@ -437,29 +574,40 @@
                     viewLineCounter++;
                 }
             }
-        });
+        }
 
         isApplyingDiff = true;
         leftEditor.setValue(leftLines.join('\n'));
         rightEditor.setValue(rightLines.join('\n'));
         isApplyingDiff = false;
 
-        const totalLines = leftLines.length;
-        highlights.forEach(h => {
-            if (h.type === 'added') {
-                rightEditor.addLineClass(h.line, 'background', 'line-added');
-                leftEditor.addLineClass(h.line, 'background', 'line-placeholder');
-            } else if (h.type === 'removed') {
-                leftEditor.addLineClass(h.line, 'background', 'line-removed');
-                rightEditor.addLineClass(h.line, 'background', 'line-placeholder');
-            }
+        lineClasses.forEach(lc => {
+            const editor = (lc.editor === 'left') ? leftEditor : rightEditor;
+            editor.addLineClass(lc.line, 'background', lc.class);
         });
 
+        charMarks.forEach(m => {
+            const editor = (m.editor === 'left') ? leftEditor : rightEditor;
+            editor.markText(
+                { line: m.line, ch: m.from },
+                { line: m.line, ch: m.to },
+                { className: m.className }
+            );
+        });
+
+        const totalLines = leftLines.length;
         const markers = diffScrollbar.querySelectorAll('.diff-marker');
         markers.forEach(marker => {
             const lineNumber = parseInt(marker.dataset.line, 10);
             if (totalLines > 0) marker.style.top = `${(lineNumber / totalLines) * 100}%`;
         });
+
+        if (diffLinesArray.length > 0) {
+
+            diffNavButtons.style.display = 'block';
+        } else {
+            diffNavButtons.style.display = 'none';
+        }
     }
 
     function createMarker(type, lineNumber) {
@@ -469,6 +617,34 @@
         marker.style.top = '0%';
         diffScrollbar.appendChild(marker);
     }
+
+    function navigateToDiff(direction) {
+        if (diffLinesArray.length === 0) return;
+
+        currentDiffIndex += direction;
+
+        if (currentDiffIndex >= diffLinesArray.length) {
+            currentDiffIndex = 0;
+        }
+        if (currentDiffIndex < 0) {
+            currentDiffIndex = diffLinesArray.length - 1;
+        }
+
+        const targetLine = diffLinesArray[currentDiffIndex];
+
+
+        const editorHeight = leftEditor.getScrollInfo().clientHeight;
+        const linePos = leftEditor.charCoords({line: targetLine, ch: 0}, "local").top;
+
+        leftEditor.scrollTo(null, linePos - (editorHeight / 2));
+
+        leftEditor.setCursor(targetLine, 0);
+        leftEditor.focus();
+    }
+
+    nextDiffButton.addEventListener('click', () => navigateToDiff(1));
+    prevDiffButton.addEventListener('click', () => navigateToDiff(-1));
+
 </script>
 
 </body>
