@@ -15,7 +15,7 @@
 1. Just click da button...
 
 #### 4. Delete comments (`DelCom`)
-This button deletes comments in all 2 windows ignoring inside text("// /**/") and in regex.
+This button copy left to right window and deletes comments in left window ignoring inside text("// /**/") and in regex.
 It also replaces strings that contains only spacebars with empty strings.
 
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/8f054783-1b06-45de-b6aa-8e4f8ed09e40" />
