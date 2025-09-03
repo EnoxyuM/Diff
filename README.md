@@ -12,7 +12,7 @@
 2. Click  **`Copy L2R Diff`** button. Diff file to change Left text(Original) to Right(Changed) will be copied to your clipboard.
 
 #### 3. To Find difference (`Find Diff`)
-1. Just click da button...
+1. Just click da button and it will highlight removed added and changed strings and symbols.
 
 #### 4. Delete comments (`DelCom`)
 This button copy left to right window and deletes comments in left window ignoring  inside text("// /**/" and inside ```) and in regex.
