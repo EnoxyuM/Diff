@@ -22,11 +22,11 @@ It also replaces strings that contains only spacebars with empty strings.
 This parses clipboard content that is structured as a series of named files and converts them into tabs. The expected format is a filename followed by a fenced code block using `` ` ``` ` ``:
 
 ````
-filename
+filename(or foldername/filename)
 ```
 text
 ```
-filename
+filename(or foldername/filename)
 ```
 text
 ```
