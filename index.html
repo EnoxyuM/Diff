@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html>
 <head>
     <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
@@ -33,6 +32,7 @@
 
         justify-content: space-between;
         position: relative;
+        flex-wrap: wrap;
 
     }
     .buttons button {
@@ -42,8 +42,13 @@
         padding: 8px 12px;
         cursor: pointer;
         margin-right: 10px;
+        margin-bottom: 5px;
     }
     .buttons button:hover {
+        background-color: #00c6e0;
+        color: #0a0a0a;
+    }
+    .buttons button.active-tab {
         background-color: #00c6e0;
         color: #0a0a0a;
     }
@@ -75,10 +80,12 @@
         flex-grow: 1;
         overflow: hidden;
     }
+
     .editor-wrapper {
         flex: 1;
         height: 100%;
         min-width: 0;
+        width: 50%;
     }
     .CodeMirror {
         height: 100%;
@@ -141,9 +148,9 @@
 <body>
 
 <div class="container">
-    <!-- === ИЗМЕНЕНИЕ: Упрощенная структура HTML === -->
     <div class="buttons">
         <div class="buttons-left">
+            <button id="to-tabs">📜</button>
             <button id="paste-left">Paste L</button>
             <button id="paste-right">Paste R</button>
             <button id="copy">Copy R</button>
@@ -162,7 +169,6 @@
             <span id="diff-stats"></span>
         </div>
     </div>
-    <!-- === КОНЕЦ ИЗМЕНЕНИЯ === -->
     <div class="editors">
         <div id="left-editor-container" class="editor-wrapper"></div>
         <div id="diff-scrollbar"></div>
@@ -172,6 +178,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
 <script>
     const leftEditor = CodeMirror(document.getElementById('left-editor-container'), {
         theme: 'bespin',
@@ -603,7 +612,6 @@
         });
 
         if (diffLinesArray.length > 0) {
-
             diffNavButtons.style.display = 'block';
         } else {
             diffNavButtons.style.display = 'none';
@@ -631,19 +639,210 @@
         }
 
         const targetLine = diffLinesArray[currentDiffIndex];
-
-
         const editorHeight = leftEditor.getScrollInfo().clientHeight;
         const linePos = leftEditor.charCoords({line: targetLine, ch: 0}, "local").top;
 
         leftEditor.scrollTo(null, linePos - (editorHeight / 2));
-
         leftEditor.setCursor(targetLine, 0);
         leftEditor.focus();
     }
 
     nextDiffButton.addEventListener('click', () => navigateToDiff(1));
     prevDiffButton.addEventListener('click', () => navigateToDiff(-1));
+
+
+
+    const toTabsButton = document.getElementById('to-tabs');
+    const buttonsLeft = document.querySelector('.buttons-left');
+    const buttonsRight = document.querySelector('.buttons-right');
+    const buttonsContainer = document.querySelector('.buttons');
+    const rightEditorContainer = document.getElementById('right-editor-container');
+    const diffScrollbarEl = document.getElementById('diff-scrollbar');
+
+    const tabsUiContainer = document.createElement('div');
+    tabsUiContainer.id = 'tabs-ui-container';
+    tabsUiContainer.style.display = 'flex';
+    tabsUiContainer.style.alignItems = 'center';
+    tabsUiContainer.style.flexWrap = 'wrap';
+
+    function findNextBlockDelimiter(text, startIndex = 0) {
+        let inSingleQuote = false;
+        let inDoubleQuote = false;
+        for (let i = startIndex; i < text.length - 2; i++) {
+            const char = text[i];
+            const prevChar = i > 0 ? text[i - 1] : null;
+            if (char === "'" && prevChar !== '\\') inSingleQuote = !inSingleQuote;
+            else if (char === '"' && prevChar !== '\\') inDoubleQuote = !inDoubleQuote;
+            if (!inSingleQuote && !inDoubleQuote) {
+                if (char === '`' && text[i + 1] === '`' && text[i + 2] === '`') return i;
+            }
+        }
+        return -1;
+    }
+
+    function parseTabsFromClipboard(text) {
+        const tabs = [];
+        let searchFrom = 0;
+        function findTabName(headerText) {
+            const lines = headerText.split('\n');
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const line = lines[i];
+                const trimmedLine = line.trim();
+                if (!trimmedLine) continue;
+                if (trimmedLine.replace(/#|\s/g, '').length === 0) continue;
+                return trimmedLine.replace(/^#+\s*/, '').trim();
+            }
+            return null;
+        }
+        while (true) {
+            const blockStart = findNextBlockDelimiter(text, searchFrom);
+            if (blockStart === -1) break;
+            const headerText = text.substring(searchFrom, blockStart);
+            const tabName = findTabName(headerText);
+            if (tabName === null) {
+                if (tabs.length === 0) {
+                    searchFrom = blockStart + 3;
+                    continue;
+                } else { break; }
+            }
+            let contentStart = blockStart + 3;
+            const lineBreakAfterBlockStart = text.indexOf('\n', contentStart);
+            if (lineBreakAfterBlockStart !== -1) {
+                const langLine = text.substring(contentStart, lineBreakAfterBlockStart).trim();
+                if (langLine.length < 20) contentStart = lineBreakAfterBlockStart + 1;
+            }
+            const blockEnd = findNextBlockDelimiter(text, contentStart);
+            if (blockEnd === -1) break;
+            const content = text.substring(contentStart, blockEnd).trim();
+            tabs.push({ name: tabName, content: content });
+            searchFrom = blockEnd + 3;
+        }
+        return tabs;
+    }
+
+    function enterTabView(tabsData) {
+        buttonsLeft.style.display = 'none';
+        buttonsRight.style.display = 'none';
+        diffNavButtons.style.display = 'none';
+        rightEditorContainer.style.display = 'none';
+        diffScrollbarEl.style.display = 'none';
+        tabsUiContainer.innerHTML = '';
+
+        const backButton = document.createElement('button');
+        backButton.innerHTML = '&larr;';
+        backButton.title = 'Back to Diff View';
+        backButton.addEventListener('click', exitTabView);
+        tabsUiContainer.appendChild(backButton);
+
+        const copyAllButton = document.createElement('button');
+        copyAllButton.textContent = '📋';
+        copyAllButton.title = 'Copy All Tabs';
+        copyAllButton.addEventListener('click', () => {
+            const fullText = tabsData.map(tab => `${tab.name}\n\`\`\`\n${tab.content}\n\`\`\``).join('\n');
+            navigator.clipboard.writeText(fullText).then(() => {
+                const originalText = copyAllButton.textContent;
+                copyAllButton.textContent = '✅';
+                setTimeout(() => { copyAllButton.textContent = originalText; }, 1500);
+            }).catch(err => alert('Failed to copy: ' + err));
+        });
+        tabsUiContainer.appendChild(copyAllButton);
+
+        const downloadZipButton = document.createElement('button');
+        downloadZipButton.textContent = '📚';
+        downloadZipButton.title = 'Download as ZIP Archive';
+        downloadZipButton.addEventListener('click', () => {
+            const zip = new JSZip();
+            tabsData.forEach(tab => {
+                zip.file(tab.name, tab.content);
+            });
+
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+            const filename = `${day}.${month}.${year} ${hours};${minutes};${seconds} ${milliseconds}.zip`;
+
+            zip.generateAsync({ type: "blob" }).then(content => {
+                saveAs(content, filename);
+            });
+        });
+        tabsUiContainer.appendChild(downloadZipButton);
+
+        tabsData.forEach((tab, index) => {
+            const tabButton = document.createElement('button');
+            tabButton.textContent = tab.name;
+            tabButton.dataset.content = tab.content;
+            tabButton.addEventListener('click', (e) => {
+                tabsUiContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active-tab'));
+                e.target.classList.add('active-tab');
+                isApplyingDiff = true;
+                leftEditor.setValue(e.target.dataset.content);
+                rightEditor.setValue('');
+                clearAllDiffHighlighting(leftEditor);
+                setTimeout(() => { isApplyingDiff = false; }, 0);
+            });
+            tabsUiContainer.appendChild(tabButton);
+            if (index === 0) tabButton.click();
+        });
+
+        buttonsContainer.prepend(tabsUiContainer);
+    }
+
+    function exitTabView() {
+        if (document.getElementById('tabs-ui-container')) {
+            buttonsContainer.removeChild(tabsUiContainer);
+        }
+        buttonsLeft.style.display = 'flex';
+        buttonsRight.style.display = 'block';
+        if (diffLinesArray.length > 0) {
+             diffNavButtons.style.display = 'block';
+        }
+        rightEditorContainer.style.display = 'flex';
+        diffScrollbarEl.style.display = 'block';
+        isApplyingDiff = true;
+        leftEditor.setValue(preDiffLeftText || '');
+        rightEditor.setValue(preDiffRightText || '');
+        isApplyingDiff = false;
+
+        if (preDiffLeftText !== null) {
+            document.getElementById('find-diff').click();
+        } else {
+             clearAllDiffHighlighting(leftEditor);
+             clearAllDiffHighlighting(rightEditor);
+        }
+    }
+
+    toTabsButton.addEventListener('click', () => {
+        navigator.clipboard.readText().then(text => {
+            if (!text || text.trim() === '') {
+                return;
+            }
+
+            let tabsData = parseTabsFromClipboard(text);
+
+            if (tabsData.length === 0) {
+                const firstLine = text.split('\n').find(line => line.trim() !== '') || 'Clipboard';
+                const tabName = firstLine.trim().substring(0, 20);
+
+                tabsData = [{
+                    name: tabName,
+                    content: text
+                }];
+            }
+
+            enterTabView(tabsData);
+
+        }).catch(err => {
+            console.error('Failed to read clipboard contents: ', err);
+            alert('Failed to read from clipboard. Check browser permissions.');
+        });
+    });
+
+
 
 </script>
 
