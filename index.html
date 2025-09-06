@@ -3,11 +3,12 @@
     <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64x64.png">
-<title>Diff</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/bespin.min.css">
+    <title>Diff</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/bespin.min.css">
 
 <style>
+
     body, html {
         margin: 0;
         padding: 0;
@@ -22,59 +23,6 @@
         flex-direction: column;
         height: 100%;
     }
-    .buttons {
-        padding: 10px;
-        background-color: #1a1a1a;
-        border-bottom: 1px solid #00c6e0;
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-
-        justify-content: space-between;
-        position: relative;
-        flex-wrap: wrap;
-
-    }
-    .buttons button {
-        background-color: #0a0a0a;
-        color: #00c6e0;
-        border: 1px solid #00c6e0;
-        padding: 8px 12px;
-        cursor: pointer;
-        margin-right: 10px;
-        margin-bottom: 5px;
-    }
-    .buttons button:hover {
-        background-color: #00c6e0;
-        color: #0a0a0a;
-    }
-    .buttons button.active-tab {
-        background-color: #00c6e0;
-        color: #0a0a0a;
-    }
-
-
-    #diff-nav-buttons {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        display: none;
-    }
-
-
-    #diff-nav-buttons button {
-        padding: 5px 10px;
-        font-size: 16px;
-        line-height: 1;
-        margin: 0 5px;
-    }
-
-    #diff-stats {
-        font-size: 14px;
-        white-space: nowrap;
-    }
-
     .editors {
         display: flex;
         flex-grow: 1;
@@ -106,42 +54,22 @@
     }
     .cm-s-bespin .CodeMirror-linenumber { color: #666; }
 
+
     .line-ws-removed { background-color: rgba(255, 193, 7, 0.25); }
     .line-ws-added { background-color: rgba(0, 123, 255, 0.2); }
-
     .line-added { background-color: rgba(40, 167, 69, 0.2); }
     .line-removed { background-color: rgba(220, 53, 69, 0.25); }
     .line-placeholder { background-color: #1a1a1a; }
+    .char-added { background-color: rgba(40, 167, 69, 0.5); border-radius: 2px; }
+    .char-removed { background-color: rgba(220, 53, 69, 0.5); text-decoration: line-through; border-radius: 2px; }
+    .char-removed-ws { background-color: rgba(220, 53, 69, 0.5); border-radius: 2px; }
 
-    .char-added {
-        background-color: rgba(40, 167, 69, 0.5);
-        border-radius: 2px;
-    }
-    .char-removed {
-        background-color: rgba(220, 53, 69, 0.5);
-        text-decoration: line-through;
-        border-radius: 2px;
-    }
-    .char-removed-ws {
-        background-color: rgba(220, 53, 69, 0.5);
-        border-radius: 2px;
-    }
 
-    #diff-scrollbar {
-        width: 5px;
-        height: 100%;
-        background-color: #2a2a2a;
-        position: relative;
-        overflow: hidden;
-    }
-    .diff-marker {
-        position: absolute;
-        width: 100%;
-        height: 3px;
-        left: 0;
-    }
+    #diff-scrollbar { width: 5px; height: 100%; background-color: #2a2a2a; position: relative; overflow: hidden; }
+    .diff-marker { position: absolute; width: 100%; height: 3px; left: 0; }
     .marker-added { background-color: #28a745; }
     .marker-removed { background-color: #dc3545; }
+
 
     #copy-feedback-popup {
         position: fixed;
@@ -159,6 +87,168 @@
         pointer-events: none;
         display: none;
     }
+
+
+
+
+    #header-container {
+        display: flex;
+        align-items: flex-end;
+        background: #1a1a1a;
+        padding: 5px 10px 0 10px;
+        box-sizing: border-box;
+        height: 50px;
+        position: relative;
+        flex-shrink: 0;
+        width: 100%;
+        border-bottom: 1px solid #00c6e0;
+    }
+
+
+    #diff-buttons-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom: 4px;
+    }
+    .buttons-left, .buttons-right {
+        display: flex;
+        align-items: center;
+    }
+
+
+    .header-btn {
+        background-color: #2d2d2d;
+        color: #ccc;
+        border: 1px solid #3c3c3c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border-radius: 6px;
+        user-select: none;
+        font-size: 16px;
+        margin-right: 8px;
+        height: 35px;
+        padding: 0 12px;
+        transition: background-color 0.2s, color 0.2s;
+        flex-shrink: 0;
+    }
+    .header-btn:hover {
+        background-color: #4a4a4a;
+        color: #fff;
+    }
+
+    #diff-stats {
+        font-size: 14px;
+        white-space: nowrap;
+        color: #ccc;
+        margin-left: 10px;
+    }
+
+
+    #diff-nav-buttons {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
+    }
+    #diff-nav-buttons button {
+        background-color: #2d2d2d;
+        color: #ccc;
+        border: 1px solid #3c3c3c;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 16px;
+        line-height: 1;
+        margin: 0 5px;
+        cursor: pointer;
+    }
+     #diff-nav-buttons button:hover {
+        background-color: #4a4a4a;
+        color: #fff;
+    }
+
+
+    #tabs-ui-container {
+        display: flex;
+        align-items: flex-end;
+        width: 100%;
+        height: 100%;
+    }
+
+
+    #tabs-container {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+        align-items: flex-end;
+    }
+
+
+    #tabs-wrapper {
+        display: flex;
+        align-items: flex-end;
+        min-width: 0;
+        overflow: hidden;
+        flex-shrink: 1;
+    }
+
+
+    .tab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #2d2d2d;
+        color: #ccc;
+        cursor: pointer;
+        border-radius: 8px;
+        margin-right: 2px;
+        overflow: hidden;
+        flex-shrink: 0;
+        width: 200px;
+        min-width: 1px;
+        height: 35px;
+        box-sizing: border-box;
+        position: relative;
+        font-size: 14px;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+    }
+
+
+    .tab span {
+        padding: 8px 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+        mask-image: linear-gradient(to right, black 85%, transparent 100%);
+    }
+
+    .tab:not(.active):hover {
+        background: #4a4a4a;
+    }
+
+
+    .tab.active {
+        background: #0a0a0a;
+        color: #00c6e0;
+        border-radius: 8px 8px 0 0;
+        font-weight: bold;
+        height: 35px;
+    }
+
+
+    #tabs-container.tabs-overflow #tabs-wrapper {
+        flex: 1 1 auto;
+    }
+    #tabs-container.tabs-overflow .tab {
+        flex: 1 1 200px;
+        width: auto;
+    }
 </style>
 </head>
 <body>
@@ -166,26 +256,31 @@
 <div id="copy-feedback-popup">Copied!</div>
 
 <div class="container">
-    <div class="buttons">
-        <div class="buttons-left">
-            <button id="to-tabs">📜</button>
-            <button id="paste-left">Paste L</button>
-            <button id="paste-right">Paste R</button>
-            <button id="copy">Copy R</button>
-            <button id="copy-l2r-diff">Copy L2R Diff</button>
-            <button id="diff">Paste Diff</button>
-            <button id="find-diff">Find Diff</button>
-            <button id="del-com">DelCom</button>
+    <div id="header-container">
+        <!-- Этот блок будет виден в режиме DIFF -->
+        <div id="diff-buttons-container">
+            <div class="buttons-left">
+                <button id="to-tabs" class="header-btn" title="Parse clipboard to tabs">📜</button>
+                <button id="paste-left" class="header-btn">Paste L</button>
+                <button id="paste-right" class="header-btn">Paste R</button>
+                <button id="copy" class="header-btn">Copy R</button>
+                <button id="copy-l2r-diff" class="header-btn">Copy L2R Diff</button>
+                <button id="diff" class="header-btn">Paste Diff</button>
+                <button id="find-diff" class="header-btn">Find Diff</button>
+                <button id="del-com" class="header-btn">DelCom</button>
+            </div>
+
+            <div id="diff-nav-buttons">
+                <button id="prev-diff" title="Previous Difference">↑</button>
+                <button id="next-diff" title="Next Difference">↓</button>
+            </div>
+
+            <div class="buttons-right">
+                <span id="diff-stats"></span>
+            </div>
         </div>
 
-        <div id="diff-nav-buttons">
-            <button id="prev-diff" title="Previous Difference">↑</button>
-            <button id="next-diff" title="Next Difference">↓</button>
-        </div>
-
-        <div class="buttons-right">
-            <span id="diff-stats"></span>
-        </div>
+        <!-- Этот блок будет виден в режиме ТАБОВ и будет создан JS -->
     </div>
     <div class="editors">
         <div id="left-editor-container" class="editor-wrapper"></div>
@@ -212,12 +307,16 @@
         lineWrapping: true,
     });
 
+
+    const headerContainer = document.getElementById('header-container');
+    const diffButtonsContainer = document.getElementById('diff-buttons-container');
     const diffScrollbar = document.getElementById('diff-scrollbar');
     const diffStats = document.getElementById('diff-stats');
-
     const diffNavButtons = document.getElementById('diff-nav-buttons');
     const prevDiffButton = document.getElementById('prev-diff');
     const nextDiffButton = document.getElementById('next-diff');
+    const rightEditorContainer = document.getElementById('right-editor-container');
+    const diffScrollbarEl = document.getElementById('diff-scrollbar');
 
     let preDiffLeftText = null;
     let preDiffRightText = null;
@@ -231,6 +330,7 @@
     let isSyncing = false;
     leftEditor.on("scroll", (cm) => { if (!isSyncing) { isSyncing = true; rightEditor.scrollTo(cm.getScrollInfo().left, cm.getScrollInfo().top); isSyncing = false; } });
     rightEditor.on("scroll", (cm) => { if (!isSyncing) { isSyncing = true; leftEditor.scrollTo(cm.getScrollInfo().left, cm.getScrollInfo().top); isSyncing = false; } });
+
 
     let feedbackTimeout;
     function showCopyFeedback() {
@@ -246,23 +346,16 @@
         }, 1000);
     }
 
+
     function clearAllDiffHighlighting(editor) {
         editor.getAllMarks().forEach(marker => marker.clear());
-
         for (let i = 0; i < editor.lineCount(); i++) {
-            editor.removeLineClass(i, 'background', 'line-added');
-            editor.removeLineClass(i, 'background', 'line-removed');
-            editor.removeLineClass(i, 'background', 'line-placeholder');
-            editor.removeLineClass(i, 'background', 'line-ws-added');
-            editor.removeLineClass(i, 'background', 'line-ws-removed');
+            editor.removeLineClass(i, 'background');
         }
     }
 
     function beforeChangeHandler(cm, change) {
-        if (isApplyingDiff || preDiffLeftText === null || change.origin === 'setValue') {
-            return;
-        }
-
+        if (isApplyingDiff || preDiffLeftText === null || change.origin === 'setValue') return;
         change.cancel();
         isApplyingDiff = true;
 
@@ -290,7 +383,6 @@
 
         leftEditor.setValue(preDiffLeftText);
         rightEditor.setValue(preDiffRightText);
-
         clearAllDiffHighlighting(leftEditor);
         clearAllDiffHighlighting(rightEditor);
 
@@ -298,7 +390,6 @@
         preDiffRightText = null;
         diffScrollbar.innerHTML = '';
         diffStats.textContent = '';
-
         diffNavButtons.style.display = 'none';
         diffLinesArray = [];
         currentDiffIndex = -1;
@@ -306,7 +397,6 @@
         targetEditor.replaceRange(change.text, origFrom, origTo);
         targetEditor.setCursor(newCursorPos);
         targetEditor.focus();
-
         isApplyingDiff = false;
     }
 
@@ -315,6 +405,7 @@
 
     document.getElementById('paste-left').addEventListener('click', () => navigator.clipboard.readText().then(text => leftEditor.setValue(text)).catch(err => console.error(err)));
     document.getElementById('paste-right').addEventListener('click', () => navigator.clipboard.readText().then(text => rightEditor.setValue(text)).catch(err => console.error(err)));
+    document.getElementById('copy').addEventListener('click', () => { navigator.clipboard.writeText(preDiffRightText || rightEditor.getValue()).then(showCopyFeedback).catch(err => console.error(err)); });
 
     document.getElementById('find-diff').addEventListener('click', () => {
         if (preDiffLeftText !== null) {
@@ -323,206 +414,58 @@
         }
         const leftText = leftEditor.getValue();
         const rightText = rightEditor.getValue();
-
         preDiffLeftText = leftText;
         preDiffRightText = rightText;
-
         const changes = Diff.diffLines(leftText, rightText);
         updateDiffStats(changes);
         renderDiffView(changes);
     });
 
     document.getElementById('diff').addEventListener('click', () => {
-        navigator.clipboard.readText()
-            .then(patch_text => {
-                if (preDiffLeftText !== null) leftEditor.setValue(preDiffLeftText);
-
-                const original_text = leftEditor.getValue();
-                const patched = Diff.applyPatch(original_text, patch_text);
-
-                if (patched === false) {
-                    preDiffLeftText = null; preDiffRightText = null;
-                    rightEditor.setValue("Error: Patch could not be applied.");
-                    leftEditor.setValue(original_text);
-                    return;
-                }
-
-                preDiffLeftText = original_text;
-                preDiffRightText = patched;
-
-                const changes = Diff.diffLines(original_text, patched);
-                updateDiffStats(changes);
-                renderDiffView(changes);
-            })
-            .catch(err => {
-                rightEditor.setValue(`Error applying patch:\n${err.message}`);
-                console.error(err);
-            });
-    });
-
-    document.getElementById('copy').addEventListener('click', () => {
-        navigator.clipboard.writeText(preDiffRightText || rightEditor.getValue())
-            .then(showCopyFeedback)
-            .catch(err => console.error(err));
+        navigator.clipboard.readText().then(patch_text => {
+            if (preDiffLeftText !== null) leftEditor.setValue(preDiffLeftText);
+            const original_text = leftEditor.getValue();
+            const patched = Diff.applyPatch(original_text, patch_text);
+            if (patched === false) {
+                preDiffLeftText = null; preDiffRightText = null;
+                rightEditor.setValue("Error: Patch could not be applied.");
+                leftEditor.setValue(original_text);
+                return;
+            }
+            preDiffLeftText = original_text;
+            preDiffRightText = patched;
+            const changes = Diff.diffLines(original_text, patched);
+            updateDiffStats(changes);
+            renderDiffView(changes);
+        }).catch(err => {
+            rightEditor.setValue(`Error applying patch:\n${err.message}`);
+            console.error(err);
+        });
     });
 
     document.getElementById('copy-l2r-diff').addEventListener('click', () => {
         const leftText = preDiffLeftText || leftEditor.getValue();
         const rightText = preDiffRightText || rightEditor.getValue();
         const correctPatch = Diff.createPatch('file.txt', leftText, rightText, 'a/left.txt', 'b/right.txt');
-
-        navigator.clipboard.writeText(correctPatch)
-            .then(showCopyFeedback)
-            .catch(err => console.error(err));
+        navigator.clipboard.writeText(correctPatch).then(showCopyFeedback).catch(err => console.error(err));
     });
-
-    function removeComments(code) {
-        let result = '';
-        let inMultilineComment = false;
-        let inSingleLineComment = false;
-        let inRegex = false;
-        let inCharClass = false;
-        let quoteChar = null;
-
-        for (let i = 0; i < code.length; i++) {
-            const char = code[i];
-            const prevChar = i > 0 ? code[i - 1] : null;
-            const nextChar = i < code.length - 1 ? code[i + 1] : null;
-
-            if (char === '`' && nextChar === '`' && code[i + 2] === '`') {
-                result += '```';
-                i += 2;
-                continue;
-            }
-
-            if ((quoteChar || inRegex) && char === '\\' && prevChar !== '\\') {
-                result += char + (nextChar || '');
-                i++;
-                continue;
-            }
-
-            if (inMultilineComment) {
-                if (char === '*' && nextChar === '/') {
-                    inMultilineComment = false;
-                    i++;
-                }
-                continue;
-            }
-
-            if (inSingleLineComment) {
-                if (char === '\n') {
-                    inSingleLineComment = false;
-                    result += char;
-                }
-                continue;
-            }
-
-            if (quoteChar) {
-                result += char;
-                if (char === quoteChar) {
-                    quoteChar = null;
-                }
-                continue;
-            }
-
-            if (inRegex) {
-                result += char;
-                if (inCharClass) {
-                    if (char === ']') {
-                        inCharClass = false;
-                    }
-                } else {
-                    if (char === '[') {
-                        inCharClass = true;
-                    } else if (char === '/') {
-                        inRegex = false;
-                    }
-                }
-                continue;
-            }
-
-            if (char === '/' && nextChar === '*') {
-                inMultilineComment = true;
-                i++;
-                continue;
-            }
-            if (char === '/' && nextChar === '/') {
-                inSingleLineComment = true;
-                i++;
-                continue;
-            }
-
-            if (char === "'" || char === '"' || char === '`') {
-                quoteChar = char;
-                result += char;
-                continue;
-            }
-
-            if (char === '/') {
-                let j = result.length - 1;
-                while (j >= 0 && /\s/.test(result[j])) {
-                    j--;
-                }
-                const lastMeaningfulChar = j >= 0 ? result[j] : '';
-
-                if ('([,=:[!&|?{};'.includes(lastMeaningfulChar) || lastMeaningfulChar === '') {
-                    inRegex = true;
-                    result += char;
-                    continue;
-                }
-            }
-            result += char;
-        }
-        return result.replace(/[ \t]+$/gm, '');
-    }
-
-    document.getElementById('del-com').addEventListener('click', () => {
-        const originalLeftText = leftEditor.getValue();
-        rightEditor.setValue(originalLeftText);
-        const cleanedLeftText = removeComments(originalLeftText);
-        leftEditor.setValue(cleanedLeftText);
-    });
-
-    function updateDiffStats(changes) {
-        let addedCount = 0;
-        let removedCount = 0;
-        changes.forEach(part => {
-            if (part.added) {
-                addedCount += part.count;
-            } else if (part.removed) {
-                removedCount += part.count;
-            }
-        });
-        diffStats.textContent = `+ ${addedCount} | - ${removedCount}`;
-    }
 
     function renderDiffView(changes) {
         clearAllDiffHighlighting(leftEditor);
         clearAllDiffHighlighting(rightEditor);
 
         diffScrollbar.innerHTML = '';
-        leftViewToOrigLineMap = [];
-        rightViewToOrigLineMap = [];
+        leftViewToOrigLineMap = []; rightViewToOrigLineMap = [];
+        diffLinesArray = []; currentDiffIndex = -1;
+        let origLeftLineCounter = 0, origRightLineCounter = 0, viewLineCounter = 0;
 
-        diffLinesArray = [];
-        currentDiffIndex = -1;
-
-        let origLeftLineCounter = 0;
-        let origRightLineCounter = 0;
-        let viewLineCounter = 0;
-
-        const leftLines = [];
-        const rightLines = [];
-        const lineClasses = [];
-        const charMarks = [];
+        const leftLines = [], rightLines = [], lineClasses = [], charMarks = [];
 
         for (let i = 0; i < changes.length; i++) {
             const part = changes[i];
             const nextPart = (i + 1 < changes.length) ? changes[i + 1] : null;
 
-            if (part.added || part.removed) {
-                diffLinesArray.push(viewLineCounter);
-            }
+            if (part.added || part.removed) { diffLinesArray.push(viewLineCounter); }
 
             if (part.removed && nextPart && nextPart.added) {
                 const removedLines = part.value.replace(/\n$/, "").split("\n");
@@ -530,11 +473,8 @@
                 const maxLen = Math.max(removedLines.length, addedLines.length);
 
                 for (let j = 0; j < maxLen; j++) {
-                    const leftLine = removedLines[j] || '';
-                    const rightLine = addedLines[j] || '';
-                    leftLines.push(leftLine);
-                    rightLines.push(rightLine);
-
+                    const leftLine = removedLines[j] || '', rightLine = addedLines[j] || '';
+                    leftLines.push(leftLine); rightLines.push(rightLine);
                     const isWhitespaceOnlyChange = leftLine.replace(/\s+/g, '') === rightLine.replace(/\s+/g, '');
 
                     if (isWhitespaceOnlyChange) {
@@ -547,24 +487,13 @@
                     createMarker('marker-removed', viewLineCounter);
 
                     const charDiff = Diff.diffChars(leftLine, rightLine);
-                    let leftCh = 0;
-                    let rightCh = 0;
-
+                    let leftCh = 0, rightCh = 0;
                     charDiff.forEach(charPart => {
                         if (charPart.added) {
-                            charMarks.push({
-                                editor: 'right', line: viewLineCounter,
-                                from: rightCh, to: rightCh + charPart.value.length,
-                                className: 'char-added'
-                            });
+                            charMarks.push({ editor: 'right', line: viewLineCounter, from: rightCh, to: rightCh + charPart.value.length, className: 'char-added' });
                             rightCh += charPart.value.length;
                         } else if (charPart.removed) {
-                            const className = (charPart.value.trim() === '') ? 'char-removed-ws' : 'char-removed';
-                            charMarks.push({
-                                editor: 'left', line: viewLineCounter,
-                                from: leftCh, to: leftCh + charPart.value.length,
-                                className: className
-                            });
+                            charMarks.push({ editor: 'left', line: viewLineCounter, from: leftCh, to: leftCh + charPart.value.length, className: (charPart.value.trim() === '') ? 'char-removed-ws' : 'char-removed' });
                             leftCh += charPart.value.length;
                         } else {
                             leftCh += charPart.value.length;
@@ -572,277 +501,268 @@
                         }
                     });
 
-                    if (j < removedLines.length) leftViewToOrigLineMap[viewLineCounter] = origLeftLineCounter++;
-                    else leftViewToOrigLineMap[viewLineCounter] = null;
-                    if (j < addedLines.length) rightViewToOrigLineMap[viewLineCounter] = origRightLineCounter++;
-                    else rightViewToOrigLineMap[viewLineCounter] = null;
-
+                    if (j < removedLines.length) leftViewToOrigLineMap[viewLineCounter] = origLeftLineCounter++; else leftViewToOrigLineMap[viewLineCounter] = null;
+                    if (j < addedLines.length) rightViewToOrigLineMap[viewLineCounter] = origRightLineCounter++; else rightViewToOrigLineMap[viewLineCounter] = null;
                     viewLineCounter++;
                 }
                 i++;
             } else if (part.added) {
                 createMarker('marker-added', viewLineCounter);
-                let lines = part.value.replace(/\n$/, "").split("\n");
-                for (const line of lines) {
-                    leftLines.push('');
-                    rightLines.push(line);
+                part.value.replace(/\n$/, "").split("\n").forEach(line => {
+                    leftLines.push(''); rightLines.push(line);
                     lineClasses.push({ editor: 'right', line: viewLineCounter, class: 'line-added' });
                     lineClasses.push({ editor: 'left', line: viewLineCounter, class: 'line-placeholder' });
                     leftViewToOrigLineMap[viewLineCounter] = null;
                     rightViewToOrigLineMap[viewLineCounter] = origRightLineCounter++;
                     viewLineCounter++;
-                }
+                });
             } else if (part.removed) {
                 createMarker('marker-removed', viewLineCounter);
-                let lines = part.value.replace(/\n$/, "").split("\n");
-                for (const line of lines) {
-                    leftLines.push(line);
-                    rightLines.push('');
+                part.value.replace(/\n$/, "").split("\n").forEach(line => {
+                    leftLines.push(line); rightLines.push('');
                     lineClasses.push({ editor: 'left', line: viewLineCounter, class: 'line-removed' });
                     lineClasses.push({ editor: 'right', line: viewLineCounter, class: 'line-placeholder' });
                     leftViewToOrigLineMap[viewLineCounter] = origLeftLineCounter++;
                     rightViewToOrigLineMap[viewLineCounter] = null;
                     viewLineCounter++;
-                }
+                });
             } else {
-                let lines = part.value.replace(/\n$/, "").split("\n");
-                for (const line of lines) {
-                    leftLines.push(line);
-                    rightLines.push(line);
+                part.value.replace(/\n$/, "").split("\n").forEach(line => {
+                    leftLines.push(line); rightLines.push(line);
                     leftViewToOrigLineMap[viewLineCounter] = origLeftLineCounter++;
                     rightViewToOrigLineMap[viewLineCounter] = origRightLineCounter++;
                     viewLineCounter++;
-                }
+                });
             }
         }
 
         isApplyingDiff = true;
-        leftEditor.setValue(leftLines.join('\n'));
-        rightEditor.setValue(rightLines.join('\n'));
+        leftEditor.setValue(leftLines.join('\n')); rightEditor.setValue(rightLines.join('\n'));
         isApplyingDiff = false;
 
-        lineClasses.forEach(lc => {
-            const editor = (lc.editor === 'left') ? leftEditor : rightEditor;
-            editor.addLineClass(lc.line, 'background', lc.class);
-        });
-
-        charMarks.forEach(m => {
-            const editor = (m.editor === 'left') ? leftEditor : rightEditor;
-            editor.markText(
-                { line: m.line, ch: m.from },
-                { line: m.line, ch: m.to },
-                { className: m.className }
-            );
-        });
+        lineClasses.forEach(lc => { ((lc.editor === 'left') ? leftEditor : rightEditor).addLineClass(lc.line, 'background', lc.class); });
+        charMarks.forEach(m => { ((m.editor === 'left') ? leftEditor : rightEditor).markText({ line: m.line, ch: m.from }, { line: m.line, ch: m.to }, { className: m.className }); });
 
         const totalLines = leftLines.length;
-        const markers = diffScrollbar.querySelectorAll('.diff-marker');
-        markers.forEach(marker => {
-            const lineNumber = parseInt(marker.dataset.line, 10);
-            if (totalLines > 0) marker.style.top = `${(lineNumber / totalLines) * 100}%`;
+        diffScrollbar.querySelectorAll('.diff-marker').forEach(marker => {
+            if (totalLines > 0) marker.style.top = `${(parseInt(marker.dataset.line, 10) / totalLines) * 100}%`;
         });
-
-        if (diffLinesArray.length > 0) {
-            diffNavButtons.style.display = 'block';
-        } else {
-            diffNavButtons.style.display = 'none';
-        }
+        diffNavButtons.style.display = diffLinesArray.length > 0 ? 'flex' : 'none';
     }
 
+    function updateDiffStats(changes) {
+        let added = 0, removed = 0;
+        changes.forEach(p => { if (p.added) added += p.count; else if (p.removed) removed += p.count; });
+        diffStats.textContent = `+${added} | -${removed}`;
+    }
     function createMarker(type, lineNumber) {
         const marker = document.createElement('div');
         marker.className = `diff-marker ${type}`;
         marker.dataset.line = lineNumber;
-        marker.style.top = '0%';
         diffScrollbar.appendChild(marker);
     }
-
     function navigateToDiff(direction) {
         if (diffLinesArray.length === 0) return;
-
-        currentDiffIndex += direction;
-
-        if (currentDiffIndex >= diffLinesArray.length) {
-            currentDiffIndex = 0;
-        }
-        if (currentDiffIndex < 0) {
-            currentDiffIndex = diffLinesArray.length - 1;
-        }
-
+        currentDiffIndex = (currentDiffIndex + direction + diffLinesArray.length) % diffLinesArray.length;
         const targetLine = diffLinesArray[currentDiffIndex];
         const editorHeight = leftEditor.getScrollInfo().clientHeight;
         const linePos = leftEditor.charCoords({line: targetLine, ch: 0}, "local").top;
-
         leftEditor.scrollTo(null, linePos - (editorHeight / 2));
         leftEditor.setCursor(targetLine, 0);
         leftEditor.focus();
     }
-
     nextDiffButton.addEventListener('click', () => navigateToDiff(1));
     prevDiffButton.addEventListener('click', () => navigateToDiff(-1));
 
 
-
-    const toTabsButton = document.getElementById('to-tabs');
-    const buttonsLeft = document.querySelector('.buttons-left');
-    const buttonsRight = document.querySelector('.buttons-right');
-    const buttonsContainer = document.querySelector('.buttons');
-    const rightEditorContainer = document.getElementById('right-editor-container');
-    const diffScrollbarEl = document.getElementById('diff-scrollbar');
-
-    const tabsUiContainer = document.createElement('div');
-    tabsUiContainer.id = 'tabs-ui-container';
-    tabsUiContainer.style.display = 'flex';
-    tabsUiContainer.style.alignItems = 'center';
-    tabsUiContainer.style.flexWrap = 'wrap';
-
-    function findNextBlockDelimiter(text, startIndex = 0) {
-        let inSingleQuote = false;
-        let inDoubleQuote = false;
-        for (let i = startIndex; i < text.length - 2; i++) {
-            const char = text[i];
-            const prevChar = i > 0 ? text[i - 1] : null;
-            if (char === "'" && prevChar !== '\\') inSingleQuote = !inSingleQuote;
-            else if (char === '"' && prevChar !== '\\') inDoubleQuote = !inDoubleQuote;
-            if (!inSingleQuote && !inDoubleQuote) {
-                if (char === '`' && text[i + 1] === '`' && text[i + 2] === '`') return i;
+    function removeComments(code) {
+        let result = '';
+        let inMultilineComment = false, inSingleLineComment = false, inRegex = false, inCharClass = false;
+        let quoteChar = null;
+        for (let i = 0; i < code.length; i++) {
+            const char = code[i], prevChar = i > 0 ? code[i-1] : null, nextChar = i < code.length-1 ? code[i+1] : null;
+            if (char === '`' && nextChar === '`' && code[i+2] === '`') { result += '```'; i += 2; continue; }
+            if ((quoteChar || inRegex) && char === '\\' && prevChar !== '\\') { result += char + (nextChar || ''); i++; continue; }
+            if (inMultilineComment) { if (char === '*' && nextChar === '/') { inMultilineComment = false; i++; } continue; }
+            if (inSingleLineComment) { if (char === '\n') { inSingleLineComment = false; result += char; } continue; }
+            if (quoteChar) { result += char; if (char === quoteChar) quoteChar = null; continue; }
+            if (inRegex) {
+                result += char;
+                if (inCharClass) { if (char === ']') inCharClass = false; }
+                else { if (char === '[') inCharClass = true; else if (char === '/') inRegex = false; }
+                continue;
             }
+            if (char === '/' && nextChar === '*') { inMultilineComment = true; i++; continue; }
+            if (char === '/' && nextChar === '/') { inSingleLineComment = true; i++; continue; }
+            if (char === "'" || char === '"' || char === '`') { quoteChar = char; result += char; continue; }
+            if (char === '/') {
+                let j = result.length - 1;
+                while (j >= 0 && /\s/.test(result[j])) j--;
+                const lastMeaningfulChar = j >= 0 ? result[j] : '';
+                if ('([,=:[!&|?{};'.includes(lastMeaningfulChar) || lastMeaningfulChar === '') { inRegex = true; result += char; continue; }
+            }
+            result += char;
         }
-        return -1;
+        return result.replace(/[ \t]+$/gm, '');
     }
+    document.getElementById('del-com').addEventListener('click', () => {
+        const originalLeftText = leftEditor.getValue();
+        rightEditor.setValue(originalLeftText);
+        leftEditor.setValue(removeComments(originalLeftText));
+    });
+
+
+
+
+    function checkTabsOverflow() {
+        const tabsContainer = document.getElementById('tabs-container');
+        const tabsWrapper = document.getElementById('tabs-wrapper');
+        if (!tabsContainer || !tabsWrapper) return;
+
+        if (tabsWrapper.scrollWidth > tabsWrapper.clientWidth + 2) {
+            tabsContainer.classList.add('tabs-overflow');
+        } else {
+            tabsContainer.classList.remove('tabs-overflow');
+        }
+    }
+
 
     function parseTabsFromClipboard(text) {
         const tabs = [];
         let searchFrom = 0;
-        function findTabName(headerText) {
-            const lines = headerText.split('\n');
+        const findNextBlockDelimiter = (txt, start = 0) => {
+            let inSingle = false, inDouble = false;
+            for (let i = start; i < txt.length - 2; i++) {
+                const char = txt[i], prev = i > 0 ? txt[i - 1] : null;
+                if (char === "'" && prev !== '\\') inSingle = !inSingle;
+                else if (char === '"' && prev !== '\\') inDouble = !inDouble;
+                if (!inSingle && !inDouble && char === '`' && txt[i + 1] === '`' && txt[i + 2] === '`') return i;
+            }
+            return -1;
+        };
+        const findTabName = header => {
+            const lines = header.split('\n');
             for (let i = lines.length - 1; i >= 0; i--) {
-                const line = lines[i];
-                const trimmedLine = line.trim();
-                if (!trimmedLine) continue;
-                if (trimmedLine.replace(/#|\s/g, '').length === 0) continue;
-                return trimmedLine.replace(/^#+\s*/, '').trim();
+                const trimmed = lines[i].trim();
+                if (trimmed && trimmed.replace(/#|\s/g, '').length > 0) return trimmed.replace(/^#+\s*/, '').trim();
             }
             return null;
-        }
+        };
         while (true) {
             const blockStart = findNextBlockDelimiter(text, searchFrom);
             if (blockStart === -1) break;
-            const headerText = text.substring(searchFrom, blockStart);
-            const tabName = findTabName(headerText);
-            if (tabName === null) {
-                if (tabs.length === 0) {
-                    searchFrom = blockStart + 3;
-                    continue;
-                } else { break; }
-            }
+            const tabName = findTabName(text.substring(searchFrom, blockStart));
+            if (tabName === null) { if (tabs.length === 0) { searchFrom = blockStart + 3; continue; } else break; }
             let contentStart = blockStart + 3;
-            const lineBreakAfterBlockStart = text.indexOf('\n', contentStart);
-            if (lineBreakAfterBlockStart !== -1) {
-                const langLine = text.substring(contentStart, lineBreakAfterBlockStart).trim();
-                if (langLine.length < 20) contentStart = lineBreakAfterBlockStart + 1;
+            const lineBreakAfter = text.indexOf('\n', contentStart);
+            if (lineBreakAfter !== -1 && text.substring(contentStart, lineBreakAfter).trim().length < 20) {
+                contentStart = lineBreakAfter + 1;
             }
             const blockEnd = findNextBlockDelimiter(text, contentStart);
             if (blockEnd === -1) break;
-            const content = text.substring(contentStart, blockEnd).trim();
-            tabs.push({ name: tabName, content: content });
+            tabs.push({ name: tabName, content: text.substring(contentStart, blockEnd).trim() });
             searchFrom = blockEnd + 3;
         }
         return tabs;
     }
 
+
     function enterTabView(tabsData) {
-        buttonsLeft.style.display = 'none';
-        buttonsRight.style.display = 'none';
-        diffNavButtons.style.display = 'none';
+        diffButtonsContainer.style.display = 'none';
         rightEditorContainer.style.display = 'none';
         diffScrollbarEl.style.display = 'none';
+
+
+        let tabsUiContainer = document.getElementById('tabs-ui-container');
+        if (!tabsUiContainer) {
+            tabsUiContainer = document.createElement('div');
+            tabsUiContainer.id = 'tabs-ui-container';
+            headerContainer.appendChild(tabsUiContainer);
+        }
+        tabsUiContainer.style.display = 'flex';
         tabsUiContainer.innerHTML = '';
+
 
         const backButton = document.createElement('button');
         backButton.innerHTML = '&larr;';
+        backButton.className = 'header-btn';
         backButton.title = 'Back to Diff View';
         backButton.addEventListener('click', exitTabView);
         tabsUiContainer.appendChild(backButton);
 
+
         const copyAllButton = document.createElement('button');
         copyAllButton.textContent = '📋';
+        copyAllButton.className = 'header-btn';
         copyAllButton.title = 'Copy All Tabs';
         copyAllButton.addEventListener('click', () => {
-            const fullText = tabsData.map(tab => `${tab.name}\n\`\`\`\n${tab.content}\n\`\`\``).join('\n');
-            navigator.clipboard.writeText(fullText)
-                .then(showCopyFeedback)
-                .catch(err => alert('Failed to copy: ' + err));
+            const fullText = tabsData.map(tab => `${tab.name}\n\`\`\`\n${tab.content}\n\`\`\``).join('\n\n');
+            navigator.clipboard.writeText(fullText).then(showCopyFeedback).catch(err => alert('Failed to copy: ' + err));
         });
         tabsUiContainer.appendChild(copyAllButton);
 
+
         const downloadZipButton = document.createElement('button');
         downloadZipButton.textContent = '📚';
+        downloadZipButton.className = 'header-btn';
         downloadZipButton.title = 'Download as ZIP Archive';
         downloadZipButton.addEventListener('click', () => {
             const zip = new JSZip();
-            tabsData.forEach(tab => {
-                zip.file(tab.name, tab.content);
-            });
-
+            tabsData.forEach(tab => zip.file(tab.name, tab.content));
             const now = new Date();
-            const day = String(now.getDate()).padStart(2, '0');
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const year = now.getFullYear();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
-            const filename = `${day}.${month}.${year} ${hours};${minutes};${seconds} ${milliseconds}.zip`;
-
-            zip.generateAsync({ type: "blob" }).then(content => {
-                saveAs(content, filename);
-            });
+            const filename = `${now.getDate().toString().padStart(2,'0')}.${(now.getMonth()+1).toString().padStart(2,'0')}.${now.getFullYear()} ${now.getHours().toString().padStart(2,'0')};${now.getMinutes().toString().padStart(2,'0')};${now.getSeconds().toString().padStart(2,'0')}.zip`;
+            zip.generateAsync({ type: "blob" }).then(content => saveAs(content, filename));
         });
         tabsUiContainer.appendChild(downloadZipButton);
 
+
+        const tabsContainer = document.createElement('div');
+        tabsContainer.id = 'tabs-container';
+        const tabsWrapper = document.createElement('div');
+        tabsWrapper.id = 'tabs-wrapper';
+        tabsContainer.appendChild(tabsWrapper);
+        tabsUiContainer.appendChild(tabsContainer);
+
+
         tabsData.forEach((tab, index) => {
-            const tabButton = document.createElement('button');
-            tabButton.textContent = tab.name;
-            tabButton.dataset.content = tab.content;
+            const tabDiv = document.createElement('div');
+            tabDiv.className = 'tab';
+            tabDiv.dataset.content = tab.content;
+            tabDiv.title = tab.name;
 
-            tabButton.addEventListener('click', (e) => {
-                const clickedButton = e.target;
+            const tabSpan = document.createElement('span');
+            tabSpan.textContent = tab.name;
+            tabDiv.appendChild(tabSpan);
 
-                if (clickedButton.classList.contains('active-tab')) {
-                    navigator.clipboard.writeText(clickedButton.dataset.content)
-                        .then(showCopyFeedback)
-                        .catch(err => console.error("Failed to copy content: ", err));
+            tabDiv.addEventListener('click', (e) => {
+                const clickedTab = e.currentTarget;
+                if (clickedTab.classList.contains('active')) {
+                    navigator.clipboard.writeText(clickedTab.dataset.content).then(showCopyFeedback).catch(err => console.error(err));
                     return;
                 }
-
-                tabsUiContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active-tab'));
-                clickedButton.classList.add('active-tab');
+                tabsWrapper.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+                clickedTab.classList.add('active');
                 isApplyingDiff = true;
-                leftEditor.setValue(clickedButton.dataset.content);
+                leftEditor.setValue(clickedTab.dataset.content);
                 rightEditor.setValue('');
                 clearAllDiffHighlighting(leftEditor);
                 setTimeout(() => { isApplyingDiff = false; }, 0);
             });
-
-            tabsUiContainer.appendChild(tabButton);
-            if (index === 0) tabButton.click();
+            tabsWrapper.appendChild(tabDiv);
+            if (index === 0) tabDiv.click();
         });
 
-        buttonsContainer.prepend(tabsUiContainer);
+
+        setTimeout(checkTabsOverflow, 50);
     }
 
+
     function exitTabView() {
-        if (document.getElementById('tabs-ui-container')) {
-            buttonsContainer.removeChild(tabsUiContainer);
+        const tabsUiContainer = document.getElementById('tabs-ui-container');
+        if (tabsUiContainer) {
+            tabsUiContainer.style.display = 'none';
         }
-        buttonsLeft.style.display = 'flex';
-        buttonsRight.style.display = 'block';
-        if (diffLinesArray.length > 0) {
-             diffNavButtons.style.display = 'block';
-        }
-
-
+        diffButtonsContainer.style.display = 'flex';
         rightEditorContainer.style.display = '';
         diffScrollbarEl.style.display = '';
 
@@ -859,33 +779,24 @@
         }
     }
 
-    toTabsButton.addEventListener('click', () => {
+
+    document.getElementById('to-tabs').addEventListener('click', () => {
         navigator.clipboard.readText().then(text => {
-            if (!text || text.trim() === '') {
-                return;
-            }
-
+            if (!text || text.trim() === '') return;
             let tabsData = parseTabsFromClipboard(text);
-
             if (tabsData.length === 0) {
                 const firstLine = text.split('\n').find(line => line.trim() !== '') || 'Clipboard';
-                const tabName = firstLine.trim().substring(0, 20);
-
-                tabsData = [{
-                    name: tabName,
-                    content: text
-                }];
+                tabsData = [{ name: firstLine.trim().substring(0, 30), content: text }];
             }
-
             enterTabView(tabsData);
-
         }).catch(err => {
-            console.error('Failed to read clipboard contents: ', err);
-            alert('Failed to read from clipboard. Check browser permissions.');
+            console.error('Failed to read clipboard: ', err);
+            alert('Failed to read from clipboard.');
         });
     });
 
 
+    window.addEventListener('resize', checkTabsOverflow);
 
 </script>
 
