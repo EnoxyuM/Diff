@@ -18,5 +18,17 @@
 This button copy left to right window and deletes comments in left window ignoring  inside text("// /**/" and inside ```) and in regex.
 It also replaces strings that contains only spacebars with empty strings.
 
+#### 5. Paste as files (`📜`)
+This parses clipboard content and convert this:
+filename or foldername/filename
+```
+code
+```
+to tabs.
+Click on active tab copies it's content.
+📋 - Copy everything
+📚 - Save as zip file
+
+
 <img width="1920" height="1078" alt="image" src="https://github.com/user-attachments/assets/ba1b437b-20b8-41a4-abb8-90cbc1268ca3" />
 
