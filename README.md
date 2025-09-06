@@ -19,16 +19,22 @@ This button copy left to right window and deletes comments in left window ignori
 It also replaces strings that contains only spacebars with empty strings.
 
 #### 5. Paste as files (`📜`)
-This parses clipboard content and convert this:
-filename or foldername/filename
-```
-code
-```
-to tabs.
-Click on active tab copies it's content.
-📋 - Copy everything
-📚 - Save as zip file
+This parses clipboard content that is structured as a series of named files and converts them into tabs. The expected format is a filename followed by a fenced code block using `` ` ``` ` ``:
 
+````
+filename
+```
+text
+```
+filename
+```
+text
+```
+````
+
+*   **Click an active tab** to copy its content to the clipboard.
+*   **📋**: Copies all tabs back into the original text format.
+*   **📚 (Download ZIP)**: Downloads all tabs as a single `.zip` archive.
 
 <img width="1920" height="1078" alt="image" src="https://github.com/user-attachments/assets/ba1b437b-20b8-41a4-abb8-90cbc1268ca3" />
 
