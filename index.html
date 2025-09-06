@@ -95,9 +95,9 @@
         display: flex;
         align-items: flex-end;
         background: #1a1a1a;
-        padding: 5px 10px 0 10px;
+        padding: 1px 10px 0 10px;
         box-sizing: border-box;
-        height: 50px;
+        height: 37px;
         position: relative;
         flex-shrink: 0;
         width: 100%;
@@ -110,7 +110,7 @@
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        margin-bottom: 4px;
+        margin-bottom: 0;
     }
     .buttons-left, .buttons-right {
         display: flex;
@@ -217,6 +217,7 @@
         font-size: 14px;
         white-space: nowrap;
         transition: all 0.2s ease;
+        user-select: none;
     }
 
 
@@ -257,7 +258,7 @@
 
 <div class="container">
     <div id="header-container">
-        <!-- Этот блок будет виден в режиме DIFF -->
+
         <div id="diff-buttons-container">
             <div class="buttons-left">
                 <button id="to-tabs" class="header-btn" title="Parse clipboard to tabs">📜</button>
@@ -280,7 +281,7 @@
             </div>
         </div>
 
-        <!-- Этот блок будет виден в режиме ТАБОВ и будет создан JS -->
+
     </div>
     <div class="editors">
         <div id="left-editor-container" class="editor-wrapper"></div>
@@ -575,36 +576,107 @@
     prevDiffButton.addEventListener('click', () => navigateToDiff(-1));
 
 
+
     function removeComments(code) {
         let result = '';
-        let inMultilineComment = false, inSingleLineComment = false, inRegex = false, inCharClass = false;
+        let inMultilineComment = false, inSingleLineComment = false, inHtmlComment = false,
+            inRegex = false, inCharClass = false;
         let quoteChar = null;
+
         for (let i = 0; i < code.length; i++) {
-            const char = code[i], prevChar = i > 0 ? code[i-1] : null, nextChar = i < code.length-1 ? code[i+1] : null;
-            if (char === '`' && nextChar === '`' && code[i+2] === '`') { result += '```'; i += 2; continue; }
-            if ((quoteChar || inRegex) && char === '\\' && prevChar !== '\\') { result += char + (nextChar || ''); i++; continue; }
-            if (inMultilineComment) { if (char === '*' && nextChar === '/') { inMultilineComment = false; i++; } continue; }
-            if (inSingleLineComment) { if (char === '\n') { inSingleLineComment = false; result += char; } continue; }
-            if (quoteChar) { result += char; if (char === quoteChar) quoteChar = null; continue; }
-            if (inRegex) {
-                result += char;
-                if (inCharClass) { if (char === ']') inCharClass = false; }
-                else { if (char === '[') inCharClass = true; else if (char === '/') inRegex = false; }
+            const char = code[i], prevChar = i > 0 ? code[i-1] : null;
+            const nextChar = i < code.length - 1 ? code[i+1] : null;
+            const nextNextChar = i < code.length - 2 ? code[i+2] : null;
+            const nextNextNextChar = i < code.length - 3 ? code[i+3] : null;
+
+            if (char === '`' && nextChar === '`' && nextNextChar === '`') {
+                if (!inMultilineComment && !inSingleLineComment && !inHtmlComment && !inRegex && !quoteChar) {
+                    result += '```';
+                    i += 2;
+                    continue;
+                }
+            }
+
+            if ((quoteChar || inRegex) && char === '\\' && prevChar !== '\\') {
+                result += char + (nextChar || '');
+                i++;
                 continue;
             }
-            if (char === '/' && nextChar === '*') { inMultilineComment = true; i++; continue; }
-            if (char === '/' && nextChar === '/') { inSingleLineComment = true; i++; continue; }
-            if (char === "'" || char === '"' || char === '`') { quoteChar = char; result += char; continue; }
+
+            if (inHtmlComment) {
+                if (char === '-' && nextChar === '-' && nextNextChar === '>') {
+                    inHtmlComment = false;
+                    i += 2;
+                }
+                continue;
+            }
+            if (inMultilineComment) {
+                if (char === '*' && nextChar === '/') {
+                    inMultilineComment = false;
+                    i++;
+                }
+                continue;
+            }
+            if (inSingleLineComment) {
+                if (char === '\n') {
+                    inSingleLineComment = false;
+                    result += char;
+                }
+                continue;
+            }
+
+            if (quoteChar) {
+                result += char;
+                if (char === quoteChar) quoteChar = null;
+                continue;
+            }
+            if (inRegex) {
+                result += char;
+                if (inCharClass) {
+                    if (char === ']') inCharClass = false;
+                } else {
+                    if (char === '[') inCharClass = true;
+                    else if (char === '/') inRegex = false;
+                }
+                continue;
+            }
+
+            if (char === '<' && nextChar === '!' && nextNextChar === '-' && nextNextNextChar === '-') {
+                inHtmlComment = true;
+                i += 3;
+                continue;
+            }
+            if (char === '/' && nextChar === '*') {
+                inMultilineComment = true;
+                i++;
+                continue;
+            }
+            if (char === '/' && nextChar === '/') {
+                inSingleLineComment = true;
+                i++;
+                continue;
+            }
+            if (char === "'" || char === '"' || char === '`') {
+                quoteChar = char;
+                result += char;
+                continue;
+            }
             if (char === '/') {
                 let j = result.length - 1;
                 while (j >= 0 && /\s/.test(result[j])) j--;
                 const lastMeaningfulChar = j >= 0 ? result[j] : '';
-                if ('([,=:[!&|?{};'.includes(lastMeaningfulChar) || lastMeaningfulChar === '') { inRegex = true; result += char; continue; }
+                if ('([,=:[!&|?{};'.includes(lastMeaningfulChar) || lastMeaningfulChar === '') {
+                    inRegex = true;
+                    result += char;
+                    continue;
+                }
             }
             result += char;
         }
         return result.replace(/[ \t]+$/gm, '');
     }
+
+
     document.getElementById('del-com').addEventListener('click', () => {
         const originalLeftText = leftEditor.getValue();
         rightEditor.setValue(originalLeftText);
@@ -696,7 +768,7 @@
         copyAllButton.className = 'header-btn';
         copyAllButton.title = 'Copy All Tabs';
         copyAllButton.addEventListener('click', () => {
-            const fullText = tabsData.map(tab => `${tab.name}\n\`\`\`\n${tab.content}\n\`\`\``).join('\n\n');
+            const fullText = tabsData.map(tab => `${tab.name}\n\`\`\`\n${tab.content}\n\`\`\``).join('\n');
             navigator.clipboard.writeText(fullText).then(showCopyFeedback).catch(err => alert('Failed to copy: ' + err));
         });
         tabsUiContainer.appendChild(copyAllButton);
