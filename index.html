@@ -80,7 +80,6 @@
         flex-grow: 1;
         overflow: hidden;
     }
-
     .editor-wrapper {
         flex: 1;
         height: 100%;
@@ -143,9 +142,28 @@
     }
     .marker-added { background-color: #28a745; }
     .marker-removed { background-color: #dc3545; }
+
+    #copy-feedback-popup {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #00c6e0;
+        color: #0a0a0a;
+        padding: 8px 16px;
+        border-radius: 5px;
+        z-index: 9999;
+        font-weight: bold;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+        pointer-events: none;
+        display: none;
+    }
 </style>
 </head>
 <body>
+
+<div id="copy-feedback-popup">Copied!</div>
 
 <div class="container">
     <div class="buttons">
@@ -213,6 +231,20 @@
     let isSyncing = false;
     leftEditor.on("scroll", (cm) => { if (!isSyncing) { isSyncing = true; rightEditor.scrollTo(cm.getScrollInfo().left, cm.getScrollInfo().top); isSyncing = false; } });
     rightEditor.on("scroll", (cm) => { if (!isSyncing) { isSyncing = true; leftEditor.scrollTo(cm.getScrollInfo().left, cm.getScrollInfo().top); isSyncing = false; } });
+
+    let feedbackTimeout;
+    function showCopyFeedback() {
+        const popup = document.getElementById('copy-feedback-popup');
+        clearTimeout(feedbackTimeout);
+
+        popup.style.display = 'block';
+        setTimeout(() => { popup.style.opacity = 1; }, 10);
+
+        feedbackTimeout = setTimeout(() => {
+            popup.style.opacity = 0;
+            setTimeout(() => { popup.style.display = 'none'; }, 300);
+        }, 1000);
+    }
 
     function clearAllDiffHighlighting(editor) {
         editor.getAllMarks().forEach(marker => marker.clear());
@@ -328,7 +360,11 @@
             });
     });
 
-    document.getElementById('copy').addEventListener('click', () => navigator.clipboard.writeText(preDiffRightText || rightEditor.getValue()).catch(err => console.error(err)));
+    document.getElementById('copy').addEventListener('click', () => {
+        navigator.clipboard.writeText(preDiffRightText || rightEditor.getValue())
+            .then(showCopyFeedback)
+            .catch(err => console.error(err));
+    });
 
     document.getElementById('copy-l2r-diff').addEventListener('click', () => {
         const leftText = preDiffLeftText || leftEditor.getValue();
@@ -336,12 +372,7 @@
         const correctPatch = Diff.createPatch('file.txt', leftText, rightText, 'a/left.txt', 'b/right.txt');
 
         navigator.clipboard.writeText(correctPatch)
-            .then(() => {
-                const button = document.getElementById('copy-l2r-diff');
-                const originalButtonText = button.textContent;
-                button.textContent = 'Copied!';
-                setTimeout(() => { button.textContent = originalButtonText; }, 1500);
-            })
+            .then(showCopyFeedback)
             .catch(err => console.error(err));
     });
 
@@ -739,11 +770,9 @@
         copyAllButton.title = 'Copy All Tabs';
         copyAllButton.addEventListener('click', () => {
             const fullText = tabsData.map(tab => `${tab.name}\n\`\`\`\n${tab.content}\n\`\`\``).join('\n');
-            navigator.clipboard.writeText(fullText).then(() => {
-                const originalText = copyAllButton.textContent;
-                copyAllButton.textContent = '✅';
-                setTimeout(() => { copyAllButton.textContent = originalText; }, 1500);
-            }).catch(err => alert('Failed to copy: ' + err));
+            navigator.clipboard.writeText(fullText)
+                .then(showCopyFeedback)
+                .catch(err => alert('Failed to copy: ' + err));
         });
         tabsUiContainer.appendChild(copyAllButton);
 
@@ -776,15 +805,26 @@
             const tabButton = document.createElement('button');
             tabButton.textContent = tab.name;
             tabButton.dataset.content = tab.content;
+
             tabButton.addEventListener('click', (e) => {
+                const clickedButton = e.target;
+
+                if (clickedButton.classList.contains('active-tab')) {
+                    navigator.clipboard.writeText(clickedButton.dataset.content)
+                        .then(showCopyFeedback)
+                        .catch(err => console.error("Failed to copy content: ", err));
+                    return;
+                }
+
                 tabsUiContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active-tab'));
-                e.target.classList.add('active-tab');
+                clickedButton.classList.add('active-tab');
                 isApplyingDiff = true;
-                leftEditor.setValue(e.target.dataset.content);
+                leftEditor.setValue(clickedButton.dataset.content);
                 rightEditor.setValue('');
                 clearAllDiffHighlighting(leftEditor);
                 setTimeout(() => { isApplyingDiff = false; }, 0);
             });
+
             tabsUiContainer.appendChild(tabButton);
             if (index === 0) tabButton.click();
         });
@@ -801,8 +841,11 @@
         if (diffLinesArray.length > 0) {
              diffNavButtons.style.display = 'block';
         }
-        rightEditorContainer.style.display = 'flex';
-        diffScrollbarEl.style.display = 'block';
+
+
+        rightEditorContainer.style.display = '';
+        diffScrollbarEl.style.display = '';
+
         isApplyingDiff = true;
         leftEditor.setValue(preDiffLeftText || '');
         rightEditor.setValue(preDiffRightText || '');
