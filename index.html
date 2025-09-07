@@ -858,16 +858,13 @@
             const trimmedText = text.trim();
             if (!trimmedText) return;
 
-
             let tabsData = parseTabsFromClipboard(trimmedText);
 
 
             if (tabsData.length === 0) {
                 const lines = trimmedText.split('\n');
                 const firstLine = lines[0].trim();
-                const content = lines.slice(1).join('\n');
-
-
+                let content = lines.slice(1).join('\n');
 
 
                 const firstLineIsHeader = content.trim() !== '' &&
@@ -875,9 +872,17 @@
 
                 if (firstLineIsHeader) {
 
+
+                    const trimmedContent = content.trim();
+                    if (trimmedContent.startsWith('```') && trimmedContent.endsWith('```')) {
+
+                        const contentLines = trimmedContent.split('\n');
+                        content = contentLines.slice(1, contentLines.length - 1).join('\n');
+                    }
+
+
                     tabsData = [{ name: firstLine, content: content }];
                 } else {
-
 
                     const defaultName = trimmedText.split('\n')[0].trim().substring(0, 50) || 'Clipboard';
                     tabsData = [{ name: defaultName, content: trimmedText }];
