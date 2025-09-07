@@ -576,7 +576,6 @@
     prevDiffButton.addEventListener('click', () => navigateToDiff(-1));
 
 
-
     function removeComments(code) {
         let result = '';
         let inMultilineComment = false, inSingleLineComment = false, inHtmlComment = false,
@@ -676,7 +675,6 @@
         return result.replace(/[ \t]+$/gm, '');
     }
 
-
     document.getElementById('del-com').addEventListener('click', () => {
         const originalLeftText = leftEditor.getValue();
         rightEditor.setValue(originalLeftText);
@@ -740,6 +738,8 @@
 
 
     function enterTabView(tabsData) {
+        if (!tabsData || tabsData.length === 0) return;
+
         diffButtonsContainer.style.display = 'none';
         rightEditorContainer.style.display = 'none';
         diffScrollbarEl.style.display = 'none';
@@ -768,7 +768,7 @@
         copyAllButton.className = 'header-btn';
         copyAllButton.title = 'Copy All Tabs';
         copyAllButton.addEventListener('click', () => {
-            const fullText = tabsData.map(tab => `${tab.name}\n\`\`\`\n${tab.content}\n\`\`\``).join('\n');
+            const fullText = tabsData.map(tab => `${tab.name}\n\`\`\`\n${tab.content}\n\`\`\``).join('\n\n');
             navigator.clipboard.writeText(fullText).then(showCopyFeedback).catch(err => alert('Failed to copy: ' + err));
         });
         tabsUiContainer.appendChild(copyAllButton);
@@ -852,20 +852,45 @@
     }
 
 
+
     document.getElementById('to-tabs').addEventListener('click', () => {
         navigator.clipboard.readText().then(text => {
-            if (!text || text.trim() === '') return;
-            let tabsData = parseTabsFromClipboard(text);
+            const trimmedText = text.trim();
+            if (!trimmedText) return;
+
+
+            let tabsData = parseTabsFromClipboard(trimmedText);
+
+
             if (tabsData.length === 0) {
-                const firstLine = text.split('\n').find(line => line.trim() !== '') || 'Clipboard';
-                tabsData = [{ name: firstLine.trim().substring(0, 30), content: text }];
+                const lines = trimmedText.split('\n');
+                const firstLine = lines[0].trim();
+                const content = lines.slice(1).join('\n');
+
+
+
+
+                const firstLineIsHeader = content.trim() !== '' &&
+                                          (firstLine.includes('/') || (!firstLine.includes(' ') && firstLine.includes('.')));
+
+                if (firstLineIsHeader) {
+
+                    tabsData = [{ name: firstLine, content: content }];
+                } else {
+
+
+                    const defaultName = trimmedText.split('\n')[0].trim().substring(0, 50) || 'Clipboard';
+                    tabsData = [{ name: defaultName, content: trimmedText }];
+                }
             }
+
             enterTabView(tabsData);
         }).catch(err => {
             console.error('Failed to read clipboard: ', err);
             alert('Failed to read from clipboard.');
         });
     });
+
 
 
     window.addEventListener('resize', checkTabsOverflow);
