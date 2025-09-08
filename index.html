@@ -700,16 +700,30 @@
     function parseTabsFromClipboard(text) {
         const tabs = [];
         let searchFrom = 0;
+
         const findNextBlockDelimiter = (txt, start = 0) => {
-            let inSingle = false, inDouble = false;
+            let inQuoteChar = null;
             for (let i = start; i < txt.length - 2; i++) {
-                const char = txt[i], prev = i > 0 ? txt[i - 1] : null;
-                if (char === "'" && prev !== '\\') inSingle = !inSingle;
-                else if (char === '"' && prev !== '\\') inDouble = !inDouble;
-                if (!inSingle && !inDouble && char === '`' && txt[i + 1] === '`' && txt[i + 2] === '`') return i;
+                const char = txt[i];
+                const prev = i > 0 ? txt[i - 1] : null;
+
+                if (prev !== '\\') {
+                    if (inQuoteChar === null && (char === "'" || char === '"')) {
+
+                        inQuoteChar = char;
+                    } else if (inQuoteChar === char) {
+
+                        inQuoteChar = null;
+                    }
+                }
+                
+                if (inQuoteChar === null && char === '`' && txt[i + 1] === '`' && txt[i + 2] === '`') {
+                    return i;
+                }
             }
             return -1;
         };
+
         const findTabName = header => {
             const lines = header.split('\n');
             for (let i = lines.length - 1; i >= 0; i--) {
@@ -718,6 +732,7 @@
             }
             return null;
         };
+
         while (true) {
             const blockStart = findNextBlockDelimiter(text, searchFrom);
             if (blockStart === -1) break;
