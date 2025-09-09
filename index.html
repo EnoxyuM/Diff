@@ -697,59 +697,48 @@
     }
 
 
+
+
     function parseTabsFromClipboard(text) {
         const tabs = [];
-        let searchFrom = 0;
+        const fence = '```';
 
-        const findNextBlockDelimiter = (txt, start = 0) => {
-            let inQuoteChar = null;
-            for (let i = start; i < txt.length - 2; i++) {
-                const char = txt[i];
-                const prev = i > 0 ? txt[i - 1] : null;
 
-                if (prev !== '\\') {
-                    if (inQuoteChar === null && (char === "'" || char === '"')) {
+        const normalizedText = text.replace(/^```[^\n]*/gm, fence);
 
-                        inQuoteChar = char;
-                    } else if (inQuoteChar === char) {
 
-                        inQuoteChar = null;
-                    }
-                }
-                
-                if (inQuoteChar === null && char === '`' && txt[i + 1] === '`' && txt[i + 2] === '`') {
-                    return i;
-                }
-            }
-            return -1;
-        };
+        const parts = normalizedText.split(fence);
 
-        const findTabName = header => {
-            const lines = header.split('\n');
-            for (let i = lines.length - 1; i >= 0; i--) {
-                const trimmed = lines[i].trim();
-                if (trimmed && trimmed.replace(/#|\s/g, '').length > 0) return trimmed.replace(/^#+\s*/, '').trim();
+        const findTabName = (header) => {
+
+            const lines = header.trim().split('\n');
+            if (lines.length > 0) {
+                return lines[lines.length - 1].trim();
             }
             return null;
         };
 
-        while (true) {
-            const blockStart = findNextBlockDelimiter(text, searchFrom);
-            if (blockStart === -1) break;
-            const tabName = findTabName(text.substring(searchFrom, blockStart));
-            if (tabName === null) { if (tabs.length === 0) { searchFrom = blockStart + 3; continue; } else break; }
-            let contentStart = blockStart + 3;
-            const lineBreakAfter = text.indexOf('\n', contentStart);
-            if (lineBreakAfter !== -1 && text.substring(contentStart, lineBreakAfter).trim().length < 20) {
-                contentStart = lineBreakAfter + 1;
+
+        for (let i = 0; i < parts.length; i += 2) {
+            const headerPart = parts[i];
+            const contentPart = parts[i + 1];
+
+            if (typeof contentPart !== 'undefined') {
+                const tabName = findTabName(headerPart);
+                if (tabName) {
+                    tabs.push({
+                        name: tabName,
+                        content: contentPart.trim()
+                    });
+                }
             }
-            const blockEnd = findNextBlockDelimiter(text, contentStart);
-            if (blockEnd === -1) break;
-            tabs.push({ name: tabName, content: text.substring(contentStart, blockEnd).trim() });
-            searchFrom = blockEnd + 3;
         }
+
         return tabs;
     }
+
+
+
 
 
     function enterTabView(tabsData) {
@@ -870,14 +859,14 @@
 
     document.getElementById('to-tabs').addEventListener('click', () => {
         navigator.clipboard.readText().then(text => {
-            const trimmedText = text.trim();
-            if (!trimmedText) return;
 
-            let tabsData = parseTabsFromClipboard(trimmedText);
+            const normalizedText = text.replace(/\r\n/g, '\n');
+            if (!normalizedText.trim()) return;
 
+            let tabsData = parseTabsFromClipboard(normalizedText);
 
             if (tabsData.length === 0) {
-                const lines = trimmedText.split('\n');
+                const lines = normalizedText.split('\n');
                 const firstLine = lines[0].trim();
                 let content = lines.slice(1).join('\n');
 
@@ -886,21 +875,15 @@
                                           (firstLine.includes('/') || (!firstLine.includes(' ') && firstLine.includes('.')));
 
                 if (firstLineIsHeader) {
-
-
                     const trimmedContent = content.trim();
                     if (trimmedContent.startsWith('```') && trimmedContent.endsWith('```')) {
-
                         const contentLines = trimmedContent.split('\n');
                         content = contentLines.slice(1, contentLines.length - 1).join('\n');
                     }
-
-
                     tabsData = [{ name: firstLine, content: content }];
                 } else {
-
-                    const defaultName = trimmedText.split('\n')[0].trim().substring(0, 50) || 'Clipboard';
-                    tabsData = [{ name: defaultName, content: trimmedText }];
+                    const defaultName = normalizedText.split('\n')[0].trim().substring(0, 50) || 'Clipboard';
+                    tabsData = [{ name: defaultName, content: normalizedText }];
                 }
             }
 
