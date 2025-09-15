@@ -35,6 +35,7 @@ text
 *   **Click an active tab** to copy its content to the clipboard.
 *   **📋**: Copies all tabs back into the original text format.
 *   **📚 (Download ZIP)**: Downloads all tabs as a single `.zip` archive.
+*   **Wheel click**: to delete tab.
 
 <img width="1920" height="1078" alt="image" src="https://github.com/user-attachments/assets/ba1b437b-20b8-41a4-abb8-90cbc1268ca3" />
 
