@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/bespin.min.css">
 
 <style>
-
     body, html {
         margin: 0;
         padding: 0;
@@ -222,7 +221,7 @@
 
 
     .tab span {
-        padding: 8px 15px;
+        padding: 8px 15px 8px 2px;
         white-space: nowrap;
         overflow: hidden;
         -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
@@ -250,11 +249,26 @@
         flex: 1 1 200px;
         width: auto;
     }
+
+    #custom-tooltip {
+        position: fixed;
+        display: none;
+        background-color: #333;
+        color: #eee;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 10000;
+        pointer-events: none; 
+        white-space: nowrap;
+    }
+
 </style>
 </head>
 <body>
 
 <div id="copy-feedback-popup">Copied!</div>
+<div id="custom-tooltip"></div>
 
 <div class="container">
     <div id="header-container">
@@ -585,25 +599,9 @@
         for (let i = 0; i < code.length; i++) {
             const char = code[i], prevChar = i > 0 ? code[i-1] : null;
             const nextChar = i < code.length - 1 ? code[i+1] : null;
-            const nextNextChar = i < code.length - 2 ? code[i+2] : null;
-            const nextNextNextChar = i < code.length - 3 ? code[i+3] : null;
-
-            if (char === '`' && nextChar === '`' && nextNextChar === '`') {
-                if (!inMultilineComment && !inSingleLineComment && !inHtmlComment && !inRegex && !quoteChar) {
-                    result += '```';
-                    i += 2;
-                    continue;
-                }
-            }
-
-            if ((quoteChar || inRegex) && char === '\\' && prevChar !== '\\') {
-                result += char + (nextChar || '');
-                i++;
-                continue;
-            }
 
             if (inHtmlComment) {
-                if (char === '-' && nextChar === '-' && nextNextChar === '>') {
+                if (char === '-' && nextChar === '-' && code[i+2] === '>') {
                     inHtmlComment = false;
                     i += 2;
                 }
@@ -623,10 +621,19 @@
                 }
                 continue;
             }
-
             if (quoteChar) {
-                result += char;
-                if (char === quoteChar) quoteChar = null;
+                if (char === '\\' && prevChar !== '\\') {
+                    result += char + (nextChar || '');
+                    i++;
+                } else if (char === quoteChar) {
+                    quoteChar = null;
+                    result += char;
+                } else if (char === '\n' && (quoteChar === "'" || quoteChar === '"')) {
+                    quoteChar = null;
+                    result += char;
+                } else {
+                    result += char;
+                }
                 continue;
             }
             if (inRegex) {
@@ -640,21 +647,22 @@
                 continue;
             }
 
-            if (char === '<' && nextChar === '!' && nextNextChar === '-' && nextNextNextChar === '-') {
-                inHtmlComment = true;
-                i += 3;
-                continue;
+            if (char === '<' && nextChar === '!' && code[i+2] === '-' && code[i+3] === '-') {
+                inHtmlComment = true; i += 3; continue;
             }
             if (char === '/' && nextChar === '*') {
-                inMultilineComment = true;
-                i++;
-                continue;
+                inMultilineComment = true; i++; continue;
             }
             if (char === '/' && nextChar === '/') {
-                inSingleLineComment = true;
-                i++;
+                inSingleLineComment = true; i++; continue;
+            }
+
+            if (char === '`' && nextChar === '`' && code[i+2] === '`') {
+                result += '```';
+                i += 2;
                 continue;
             }
+
             if (char === "'" || char === '"' || char === '`') {
                 quoteChar = char;
                 result += char;
@@ -670,6 +678,7 @@
                     continue;
                 }
             }
+
             result += char;
         }
         return result.replace(/[ \t]+$/gm, '');
@@ -744,6 +753,8 @@
     function enterTabView(tabsData) {
         if (!tabsData || tabsData.length === 0) return;
 
+        const customTooltip = document.getElementById('custom-tooltip'); 
+
         diffButtonsContainer.style.display = 'none';
         rightEditorContainer.style.display = 'none';
         diffScrollbarEl.style.display = 'none';
@@ -804,11 +815,29 @@
             const tabDiv = document.createElement('div');
             tabDiv.className = 'tab';
             tabDiv.dataset.content = tab.content;
-            tabDiv.title = tab.name;
+
+            const fullPath = tab.name;
+            const filename = fullPath.split(/[\\/]/).pop() || fullPath;
+
+            tabDiv.dataset.tooltipText = fullPath; 
 
             const tabSpan = document.createElement('span');
-            tabSpan.textContent = tab.name;
+            tabSpan.textContent = filename;
             tabDiv.appendChild(tabSpan);
+
+            tabDiv.addEventListener('mouseenter', (e) => {
+                const text = e.currentTarget.dataset.tooltipText;
+                customTooltip.textContent = text;
+                customTooltip.style.display = 'block';
+            });
+            tabDiv.addEventListener('mouseleave', () => {
+                customTooltip.style.display = 'none';
+            });
+            tabDiv.addEventListener('mousemove', (e) => {
+                customTooltip.style.left = `${e.clientX + 15}px`;
+                customTooltip.style.top = `${e.clientY + 15}px`;
+            });
+
 
             tabDiv.addEventListener('click', (e) => {
                 const clickedTab = e.currentTarget;
